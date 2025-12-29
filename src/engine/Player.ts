@@ -1,14 +1,18 @@
 import { cross } from "../math";
+import type GameObject from "./GameObject";
 import type InputManager from "./InputManager";
 import { state } from "./store";
+import TouchEventComponent from "./TouchEventComponent";
 
 export default class Player {
-    // Pozycja stóp gracza
+    public eventDebounce: number = 30;
     public position: [number, number, number] = [0, 0, 0];
     public velocity: [number, number, number] = [0, 0, 0];
 
     // Konfiguracja (Properties) - to będziesz mógł łatwo edytować w UI
+    public speedMultiplier: number = 1;
     public speed: number = 0.01;
+    public jumpForceMultiplier: number = 1;
     public jumpForce: number = 0.003;
     public gravity: number = 0.00002;
     public height: number = 0.1; // Wysokość oczu od ziemi
@@ -16,12 +20,16 @@ export default class Player {
 
     private isGrounded: boolean = false;
 
+    public currentCollision: GameObject | null = null;
+
     constructor(startPos: [number, number, number] = [0, 5, 0]) {
         this.position = startPos;
     }
 
     public update(input: InputManager, cameraYaw: number) {
-        // 1. Ruch (WASD) relatywny do obrotu kamery
+        this.eventDebounce--;
+        if (this.eventDebounce < 0) this.eventDebounce = 30;
+        this.currentCollision = null;
         let dx = 0;
         let dz = 0;
 
@@ -30,22 +38,23 @@ export default class Player {
         const forwardX = Math.cos(rYaw);
         const forwardZ = Math.sin(rYaw);
         const right = cross([forwardX, 0, forwardZ], [0, 1, 0]);
-
+        const finalSpeed = this.speed * this.speedMultiplier;
+        const finalJumpPower = this.jumpForce * this.jumpForceMultiplier;
         if (input.isKeyDown("KeyW")) {
-            dx += forwardX * this.speed;
-            dz += forwardZ * this.speed;
+            dx += forwardX * finalSpeed;
+            dz += forwardZ * finalSpeed;
         }
         if (input.isKeyDown("KeyS")) {
-            dx -= forwardX * this.speed;
-            dz -= forwardZ * this.speed;
+            dx -= forwardX * finalSpeed;
+            dz -= forwardZ * finalSpeed;
         }
         if (input.isKeyDown("KeyD")) {
-            dx += right[0] * this.speed;
-            dz += right[2] * this.speed;
+            dx += right[0] * finalSpeed;
+            dz += right[2] * finalSpeed;
         }
         if (input.isKeyDown("KeyA")) {
-            dx -= right[0] * this.speed;
-            dz -= right[2] * this.speed;
+            dx -= right[0] * finalSpeed;
+            dz -= right[2] * finalSpeed;
         }
 
         // Normalizacja, żeby chodzenie na skos nie było szybsze
@@ -56,7 +65,7 @@ export default class Player {
 
         // 2. Skok
         if (input.isKeyDown("Space") && this.isGrounded) {
-            this.velocity[1] = this.jumpForce;
+            this.velocity[1] = finalJumpPower;
             this.isGrounded = false;
         }
 
@@ -97,8 +106,10 @@ export default class Player {
             const collisionZ = pMinZ <= maxZ && pMaxZ >= minZ;
 
             if (collisionX && collisionZ && collisionY) {
-                // Czy spadamy na obiekt z góry?
-                // Poprzednia pozycja stóp
+                this.currentCollision = obj;
+                if (this.eventDebounce <= 0) {
+                    this.triggerTouchEvent(obj);
+                }
                 const prevY = this.position[1];
                 
                 // Jeśli byliśmy wyżej niż obiekt + mały margines
@@ -121,5 +132,12 @@ export default class Player {
 
         // Aktualizacja pozycji
         this.position = [nextX, nextY, nextZ];
+    }
+
+    private triggerTouchEvent(obj: GameObject) {
+        const eventComponent = obj.components.find(c => c instanceof TouchEventComponent);
+        if (eventComponent) {
+            eventComponent.onTrigger();
+        }
     }
 }

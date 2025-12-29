@@ -23,12 +23,7 @@ export default class Renderer {
         this.gl.useProgram(this.mainProgram);
         this.gl.uniformMatrix4fv(this.locMainView, false, camera.viewMatrix);
         this.gl.uniformMatrix4fv(this.locMainProj, false, camera.projMatrix);
-
-        // Funkcja rysująca (bez rekurencji dla głównej sceny, chyba że chcesz)
-        // W twoim przykładzie było płasko, ale tutaj dodajemy obsługę getMatrixModel()
-        const draw = (obj: GameObject) => {
-            // obj.position[0] += 0.0001; // Usuń ten auto-ruch, bo psuje edytor!
-            
+        const draw = (obj: GameObject) => {     
             if (obj.mesh) {
                 obj.mesh.bind();
                 obj.update();

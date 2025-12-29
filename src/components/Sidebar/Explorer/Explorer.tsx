@@ -11,7 +11,7 @@ const Explorer = () => {
                 <div class="flex flex-col pt-4 mt-2 border-t border-zinc-700">
                     <For each={state.objects}>
                         {(obj) => (
-                            <ExplorerRow icon={Box} obj={obj}/>
+                            <ExplorerRow icon={Box} node={obj} type="object" depth={0} />
                         )}
                     </For>
                 </div>

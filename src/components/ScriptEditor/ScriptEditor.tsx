@@ -58,6 +58,7 @@ const ScriptEditor = () => {
 
   const handleClose = () => {
     storeActions.setOpenedWindow("");
+    storeActions.setSelectedComponent(null);
   };
 
   return (

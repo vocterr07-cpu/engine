@@ -184,7 +184,7 @@ export default class Camera {
 
     public update() {
         this.rotateCamera();
-        if (this.engine.mode === "player") {
+        if (state.mode === "player") {
             this.followPlayer()
         } else {
             this.moveCamera();

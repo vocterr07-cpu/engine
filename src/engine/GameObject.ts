@@ -1,4 +1,4 @@
-import { Mat4 } from "../math";
+import { Mat4, toRad } from "../math";
 import type Mesh from "./Mesh";
 import type Texture from "./Texture";
 import type Component from "./Component";
@@ -37,31 +37,38 @@ export default class GameObject {
     }
 
     // NAPRAWIONE: Macierz uwzględnia transformację rodzica
-    public getMatrixModel(): Float32Array {
-        // 1. Oblicz lokalną macierz (Local Space)
-        let scaleMatrix = Mat4.scale(this.scale[0], this.scale[1], this.scale[2]);
-        let translationMatrix = Mat4.translation(this.position[0], this.position[1], this.position[2]);
-        
-        let rotX = Mat4.rotationX(this.rotation[0] * Math.PI / 180);
-        let rotY = Mat4.rotationY(this.rotation[1] * Math.PI / 180);
-        let rotZ = Mat4.rotationZ(this.rotation[2] * Math.PI / 180);
-        
-        // Kolejność rotacji: Z * Y * X (lub inna, zależnie od konwencji, tutaj ZYX)
-        let rotMatrix = Mat4.multiply(rotZ, Mat4.multiply(rotY, rotX));
-        
-        let localModel = Mat4.multiply(translationMatrix, Mat4.multiply(rotMatrix, scaleMatrix));
+    // GameObject.ts
 
-        // 2. Jeśli mamy rodzica, pomnóż przez jego macierz (Parent * Local)
-        if (this.parent) {
-            const parentModel = this.parent.getMatrixModel();
-            return Mat4.multiply(parentModel, localModel);
-        }
+public getMatrixModel(): Float32Array {
+    const t = Mat4.translation(this.position[0], this.position[1], this.position[2]);
+    const s = Mat4.scale(this.scale[0], this.scale[1], this.scale[2]);
+    
+    // Tworzymy macierze dla każdej osi
+    // Zakładamy, że rotation to [x, y, z] w stopniach
+    const rx = Mat4.rotationX(toRad(this.rotation[0]));
+    const ry = Mat4.rotationY(toRad(this.rotation[1]));
+    const rz = Mat4.rotationZ(toRad(this.rotation[2]));
+    
+    // Łączymy rotacje: Z * Y * X (standardowa kolejność)
+    const rot = Mat4.multiply(rz, Mat4.multiply(ry, rx));
+    
+    // Składamy wszystko: T * R * S
+    let model = Mat4.multiply(t, Mat4.multiply(rot, s));
 
-        return localModel;
+    // Jeśli jest parent, musimy pomnożyć przez jego macierz
+    if (this.parent) {
+        model = Mat4.multiply(this.parent.getMatrixModel(), model);
     }
+
+    return model;
+}
 
     public update() {
         this.components.forEach((comp) => comp.update());
         this.children.forEach((child) => child.update());
+    }
+
+    public clone() {
+        return new GameObject(`${this.name}-Clone`, this.mesh, [this.position[0] + this.scale[0] + 0.5, this.position[1], this.position[2]], this.scale);
     }
 }

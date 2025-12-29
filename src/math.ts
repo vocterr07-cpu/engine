@@ -157,3 +157,32 @@ export function closestPointLines(
     const t = (a * e - b * d) / denom;
     return t;
 }
+
+export const toRad = (deg: number) => deg * Math.PI / 180;
+
+// Oblicza punkt na promieniu: P = O + D * t
+export function getPointOnRay(origin: number[], dir: number[], t: number): [number, number, number] {
+    return [
+        origin[0] + dir[0] * t,
+        origin[1] + dir[1] * t,
+        origin[2] + dir[2] * t
+    ];
+}
+
+// Przecięcie promienia z nieskończoną płaszczyzną
+export function intersectRayPlane(
+    rayO: number[], 
+    rayD: number[], 
+    planeNormal: number[], 
+    planePoint: number[]
+): number | null {
+    const denom = dot(rayD, planeNormal);
+    
+    // Jeśli denom jest bliski 0, promień jest równoległy do płaszczyzny
+    if (Math.abs(denom) < 0.00001) return null;
+
+    // t = ( (punkt_płaszczyzny - start_promienia) ⋅ normalna ) / ( kierunek_promienia ⋅ normalna )
+    const t = dot(sub(planePoint, rayO), planeNormal) / denom;
+    
+    return t >= 0 ? t : null;
+}

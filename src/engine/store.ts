@@ -4,38 +4,46 @@ import type GameObject from "./GameObject";
 import type Script from "./Script";
 import type MouseEventComponent from "./MouseEventComponent";
 import type Component from "./Component";
+import type TouchEventComponent from "./TouchEventComponent";
 
+// Zaktualizowany interfejs (dodane 'log')
 export interface LogEntry {
     id: string;
-    type: 'info' | 'warn' | 'error' | 'success';
+    type: 'log' | 'info' | 'warn' | 'error' | 'success'; 
     message: string;
     timestamp: string;
 }
 
 interface EditorState {
+    language: string;
     engine: Engine | null;
     objects: GameObject[];
     selectedObject: GameObject | null;
     selectedScript: Script | null;
+    selectedComponent: Component | null;
     selectedMouseEvent: MouseEventComponent | null;
+    selectedTouchEvent: TouchEventComponent | null;
     openedContextMenuId: string | null;
     openedWindow: string;
     logs: LogEntry[];
-    
-    // NASZ "MŁOTEK" DO ODŚWIEŻANIA UI
     version: number;
+    mode: "camera" | "player";
 }
 
 export const state = createMutable<EditorState>({
+    language: "en",
     engine: null,
     objects: [],
     selectedObject: null,
     selectedScript: null,
+    selectedComponent: null,
     selectedMouseEvent: null,
+    selectedTouchEvent: null,
     openedContextMenuId: null,
     openedWindow: "",
     logs: [],
-    version: 0
+    version: 0,
+    mode: "camera"
 });
 
 export const storeActions = {
@@ -43,13 +51,14 @@ export const storeActions = {
 
     setObjects: (newObjects: GameObject[]) => {
         state.objects = newObjects;
-        state.version++; // Nowa lista = odświeżamy
+        state.version++;
     },
     
     addObject: (newObject: GameObject) => {
+        if (!state.engine) return;
         state.engine?.scene.add(newObject);
         state.objects.push(newObject);
-        state.version++; // Dodano obiekt = odświeżamy
+        state.version++;
     },
     
     removeObject: (object: GameObject) => {
@@ -58,26 +67,37 @@ export const storeActions = {
         if (idx > -1) state.objects.splice(idx, 1);
         
         if (state.selectedObject === object) state.selectedObject = null;
-        state.version++; // Usunięto obiekt = odświeżamy
+        state.version++;
     },
 
     setSelectedObject: (obj: GameObject | null) => { state.selectedObject = obj; },
     setSelectedScript: (script: Script | null) => { state.selectedScript = script; },
+    setSelectedComponent: (component: Component | null) => {state.selectedComponent = component},
     setSelectedMouseEvent: (evt: MouseEventComponent | null) => { state.selectedMouseEvent = evt; },
+    setSelectedTouchEvent: (event: TouchEventComponent | null) => {state.selectedTouchEvent = event},
     setOpenedContextMenuId: (id: string | null) => { state.openedContextMenuId = id; },
     setOpenedWindow: (windowName: string) => { state.openedWindow = windowName; },
 
-    // PANCERNE DODAWANIE
     addComponentToObject: (targetObj: GameObject, component: Component) => {
         targetObj.components.push(component);
-        
         state.version++;
     },
 
+    // --- NAPRAWIONE DLA CREATEMUTABLE ---
     addLogsBatch: (batch: LogEntry[]) => {
-        state.logs.push(...batch);
-        if (state.logs.length > 200) state.logs.splice(0, state.logs.length - 200);
+        // 1. Łączymy obecne logi z nowymi
+        let updated = [...state.logs, ...batch];
+        
+        // 2. Przycinamy bufor do 500, jeśli przekroczono
+        if (updated.length > 500) {
+            updated = updated.slice(updated.length - 500);
+        }
+        
+        // 3. Bezpośrednie przypisanie (Solid wykryje zmianę)
+        state.logs = updated;
     },
     
     clearLogs: () => { state.logs = []; },
+
+    setMode: (mode: "player" | "camera") => {state.mode = mode}
 };

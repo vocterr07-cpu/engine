@@ -7,16 +7,28 @@ import Sidebar from './components/Sidebar/Sidebar';
 import Topbar from './components/Topbar/Topbar';
 import Engine from './engine/Engine';
 import { state, storeActions } from './engine/store';
-import { onMount, Show } from 'solid-js';
+import { onCleanup, onMount, Show } from 'solid-js';
+import { Move, Rotate3D } from 'lucide-solid';
+import EditMode from './components/EditMode/EditMode';
+import MouseEventWindow from './components/MouseEventWindow/MouseEventWindow';
+import TouchEventWindow from './components/TouchEventWindow/TouchEventWindow';
 
 function App() {
   let canvas: HTMLCanvasElement | undefined;
-
+  let engine: Engine | null = null;
   onMount(() => {
     if (canvas) {
-      const engine = new Engine(canvas);
+      engine = new Engine(canvas);
       storeActions.setEngine(engine);
       engine.start();
+
+      onCleanup(() => {
+        if (engine) {
+          engine.destroy();
+        engine = null;
+        }
+        
+      })
     }
   })
 
@@ -38,8 +50,19 @@ function App() {
                 "block": state.openedWindow === ""
               }}
             />
+            <Show when={state.selectedObject && state.openedWindow === ""} fallback={<></>}>
+              {(obj) => (
+                <EditMode/>
+              )}
+            </Show>
             <Show when={state.openedWindow === "script"} fallback={<></>}>
               <ScriptEditor />
+            </Show>
+            <Show when={state.openedWindow === "mouseEvent"} fallback={<></>}>
+              <MouseEventWindow/>
+            </Show>
+            <Show when={state.openedWindow === "touchEvent"} fallback={<></>}>
+              <TouchEventWindow/>
             </Show>
           </div>
           <Console />

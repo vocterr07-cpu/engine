@@ -17,6 +17,7 @@ export default class Scene {
     // Metody do zarządzania surową listą
     public add(obj: GameObject) {
         this.children.push(obj);
+        obj.scene = this;
     }
 
     public remove(obj: GameObject) {

@@ -1,11 +1,11 @@
 import Camera from "./Camera";
 import Gizmo from "./Gizmo";
 import InputManager from "./InputManager";
+import { Logger } from "./Logger";
 import Player from "./Player";
 import Renderer from "./Renderer";
 import Scene from "./Scene";
 import { state } from "./store";
-
 export default class Engine {
     public canvas: HTMLCanvasElement;
     public gl: WebGL2RenderingContext;
@@ -18,11 +18,14 @@ export default class Engine {
 
     public lastTime = 0;
     public fps = 0;
-    public mode: "camera" | "player" = "camera";
+    
     private frameId: number = 0;
     private isDestroyed: boolean = false;
+    public editMode: "move" | "rotate" = "move"; 
 
     constructor(canvas: HTMLCanvasElement) {
+        Logger.init();
+        console.log("Engine initialization started...")
         this.canvas = canvas;
         const gl = canvas.getContext("webgl2");
         if (!gl) throw new Error("WebGL2 not supported");
@@ -77,16 +80,19 @@ export default class Engine {
             this.canvas.height = this.canvas.clientHeight;
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
-        
-        if (this.mode === "player") this.player.update(this.input, this.camera.yaw);
+        if (state.mode === "player") this.player.update(this.input, this.camera.yaw);
         
         // Obsługa dragu Gizma
         if (this.input.mouse[0]) {
              const x = this.input.mouseX;
              const y = this.input.mouseY;
              const ray = this.camera.getRay(x, y);
-             this.gizmo.onMouseMove(ray);
-             this.gizmo.checkHit(ray); // update hover color
+             const rect = this.canvas.getBoundingClientRect();
+             const globalX = x + rect.left;
+             const globalY = y + rect.top;
+
+             this.gizmo.onMouseMove(ray, globalX, globalY);
+             this.gizmo.checkHit(ray);
         }
         
         this.camera.update();
