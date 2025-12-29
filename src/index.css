@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Opcjonalnie: ciemny motyw domyślny */
+body {
+    background-color: #18181b;
+    color: white;
+    margin: 0;
+}
+/* --- IDE STYLE SCROLLBAR --- */
+
+/* 1. Szerokość i ogólny wygląd (Chrome, Edge, Safari) */
+.scrollbar::-webkit-scrollbar {
+  width: 8px;  /* Pionowy - cienki */
+  height: 8px; /* Poziomy - cienki */
+}
+
+/* 2. Tło scrollbara (Track) */
+::-webkit-scrollbar-track {
+  background: transparent; /* Przezroczyste, żeby nie psuło designu */
+}
+
+/* 3. Suwak (Thumb) */
+::-webkit-scrollbar-thumb {
+  background-color: #3f3f46; /* zinc-700 */
+  border-radius: 20px;       /* Maksymalne zaokrąglenie */
+  border: 2px solid transparent; /* Trick: dodaje "padding" wokół suwaka */
+  background-clip: content-box;  /* Suwak będzie mniejszy niż 8px dzięki borderowi */
+}
+
+/* 4. Suwak po najechaniu (Hover) */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #52525b; /* zinc-600 */
+}
+
+/* 5. Firefox (Obsługuje tylko podstawowe kolory i szerokość) */
+* {
+  scrollbar-width: thin;          /* Cienki scrollbar */
+  scrollbar-color: #3f3f46 transparent; /* zinc-700 i tło */
+}
