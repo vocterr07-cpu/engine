@@ -22,8 +22,7 @@ export default class Player {
 
     public currentCollision: GameObject | null = null;
 
-    constructor(startPos: [number, number, number] = [0, 5, 0]) {
-        this.position = startPos;
+    constructor() {
     }
 
     public update(input: InputManager, cameraYaw: number) {
@@ -108,7 +107,19 @@ export default class Player {
             if (collisionX && collisionZ && collisionY) {
                 this.currentCollision = obj;
                 if (this.eventDebounce <= 0) {
+                    const posBeforeTrigger = [...this.position];
                     this.triggerTouchEvent(obj);
+
+                    if (this.position[0] !== posBeforeTrigger[0] ||
+                        this.position[1] !== posBeforeTrigger[1] ||
+                        this.position[2] !== posBeforeTrigger[2]
+                    ) {
+                        nextX = this.position[0];
+                        nextY = this.position[1];
+                        nextZ = this.position[2];
+
+                        this.velocity[1] = 0;
+                    }
                 }
                 const prevY = this.position[1];
                 

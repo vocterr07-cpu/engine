@@ -1,88 +1,67 @@
 import Component from "./Component";
+import { state } from "./store"; // Import stanu globalnego
+import type { ActionData } from "../components/VisualScripting/types"; 
 
 export default class TouchEventComponent extends Component {
-    // Sekcja wizualna
-    public changeColor: boolean = false;
-    public targetColor: [number, number, number] = [1, 1, 0];
-    public originalColor: [number, number, number] = [1, 1, 1];
-
-    // Sekcja Audio
-    public playAudio: boolean = false;
-    public audioUrl: string = "";
-    public repeatAudio: boolean = false;
-    public repeatInterval: number = 1.0; // Domyślnie co 1 sekundę
+    public actions: ActionData[] = [];
     
-    // Prywatne pola do logiki
-    private audioInstance: HTMLAudioElement | null = null;
-    private alreadyPlayedAudio: boolean = false;
-    private lastTriggerTime: number = 0; // Czas ostatniego odtworzenia
+    // --- POMOCNIK DO ZNAJDOWANIA ZMIENNYCH ---
+    private getVariableValue(id: string): any {
+        // 1. Szukaj w zmiennych lokalnych obiektu
+        if (this.gameObject) {
+            const local = this.gameObject.variables.find(v => v.id === id);
+            if (local) return local.value;
+        }
+        
+        // 2. Szukaj w zmiennych globalnych
+        const global = state.variables.find(v => v.id === id);
+        if (global) return global.value;
 
-    public changePlayerSpeed: boolean = false;
-    public speedMultiplier: number = 1;
+        console.warn(`Variable with ID ${id} not found!`);
+        return null; // Zmienna nie istnieje
+    }
 
-    public changePlayerJumpForce: boolean = false;
-    public jumpForceMultiplier: number = 1;
+    // --- SILNIK WYKONAWCZY (INTERPRETER) ---
+    private executeActionList(actions: ActionData[]) {
+        for (const action of actions) {
+            
+            // === LOGIKA IF ===
+            if (action.type === "IF_CONDITION") {
+                const varValue = this.getVariableValue(action.payload.variableId);
+                const compareValue = parseFloat(action.payload.value); // Zakładamy liczby na start
+                const op = action.payload.operator;
+                
+                let conditionMet = false;
+                if (op === ">") conditionMet = varValue > compareValue;
+                if (op === "<") conditionMet = varValue < compareValue;
+                if (op === "==") conditionMet = varValue == compareValue; // == pozwala na string "5" == number 5
+                if (op === "!=") conditionMet = varValue != compareValue;
 
-    public teleportPlayer: boolean = false;
-    public teleportPosition: [number, number, number] = [2,2,2];
+                if (conditionMet) {
+                    // REKURENCJA! Wykonaj dzieci
+                    this.executeActionList(action.payload.thenActions || []);
+                }
+            }
+
+            // === LOGIKA DEBUG ===
+            else if (action.type === "DEBUG_LOG") {
+                console.log(`[GAME SCRIPT]: ${action.payload.message}`);
+                // Możesz tu dodać też powiadomienie na ekranie w grze!
+            }
+
+            // === LOGIKA TELEPORT ===
+            else if (action.type === "TELEPORT_PLAYER") {
+                const player = this.gameObject?.scene?.engine.getPlayer();
+                if (player) {
+                     player.position = [action.payload.x, action.payload.y, action.payload.z];
+                }
+            }
+        }
+    }
 
     public onTrigger() {
-        // 1. Zmiana koloru
-        if (this.changeColor && this.gameObject && this.gameObject.scene) {
-            // Zabezpieczenie: zapisz oryginał tylko raz
-            if (this.gameObject.color[0] !== this.targetColor[0]) { 
-                 this.originalColor = [...this.gameObject.color];
-            }
-            this.gameObject.color = this.targetColor;
+        if (this.actions.length > 0) {
+            this.executeActionList(this.actions);
         }
-
-        // 2. Obsługa Audio
-        if (this.playAudio && this.audioUrl) {
-            // Inicjalizacja instancji audio (tylko raz)
-            if (!this.audioInstance || this.audioInstance.src !== this.audioUrl) {
-                this.audioInstance = new Audio(this.audioUrl);
-            }
-
-            const now = performance.now(); // Pobieramy aktualny czas w ms
-
-            // --- SCENARIUSZ A: Powtarzanie co X sekund ---
-            if (this.repeatAudio) {
-                // Sprawdzamy czy minął interwał (zamieniamy sekundy na milisekundy)
-                if (now - this.lastTriggerTime >= this.repeatInterval * 1000) {
-                    this.playAudioInstance();
-                    this.lastTriggerTime = now;
-                }
-            } 
-            // --- SCENARIUSZ B: Odtwórz tylko raz ---
-            else if (!this.alreadyPlayedAudio) {
-                this.playAudioInstance();
-                this.alreadyPlayedAudio = true;
-            }
-        }
-        const player = this.gameObject?.scene?.engine.getPlayer();
-        
-        if (this.changePlayerSpeed && player) {
-            player.speedMultiplier = this.speedMultiplier;
-        }
-        if (this.changePlayerJumpForce && player) {
-            player.jumpForceMultiplier = this.jumpForceMultiplier;
-        }
-    }
-
-    // Helper do czystego odtwarzania
-    private playAudioInstance() {
-        if (this.audioInstance) {
-            this.audioInstance.currentTime = 0; // Przewiń na start
-            this.audioInstance.play().catch(e => console.warn("Audio blocked:", e));
-        }
-    }
-    
-    // Opcjonalnie: Resetowanie stanu gdy gracz odejdzie (jeśli potrzebujesz)
-    public onLeave() {
-        if (this.changeColor && this.gameObject) {
-            this.gameObject.color = this.originalColor;
-        }
-        // Jeśli chcesz, żeby po odejściu i powrocie dźwięk "Play Once" znowu zadziałał:
-        // this.alreadyPlayedAudio = false; 
     }
 }

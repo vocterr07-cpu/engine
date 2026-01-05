@@ -6,16 +6,25 @@ import ExplorerRow from "./ExplorerRow"
 
 const Explorer = () => {
   return (
-     <div class="flex flex-col p-2 h-[50%] rounded-md shadow-md scrollbar shadow-zinc-950 overflow-y-scroll overflow-x-hidden">
-                <SectionHeader icon={Folder} label="Explorer"/>
-                <div class="flex flex-col pt-4 mt-2 border-t border-zinc-700">
-                    <For each={state.objects}>
-                        {(obj) => (
-                            <ExplorerRow icon={Box} node={obj} type="object" depth={0} />
-                        )}
-                    </For>
-                </div>
-            </div>
+    // ZMIANY STYLI TUTAJ:
+    <div class="flex flex-col h-[50%] rounded-lg bg-zinc-900 border border-zinc-700/60 shadow-xl shadow-black/40 overflow-hidden">
+        
+        {/* Header z delikatnym tłem */}
+        <div class="bg-zinc-900/50 p-2 border-b border-zinc-800">
+             <SectionHeader icon={Folder} label="Explorer"/>
+        </div>
+
+        {/* Lista z własnym scrollem */}
+        <div class="flex flex-col flex-1 p-2 overflow-y-auto overflow-x-hidden custom-scrollbar bg-zinc-900/30">
+             <div class="flex flex-col gap-0.5">
+                <For each={state.objects}>
+                    {(obj) => (
+                        <ExplorerRow icon={Box} node={obj} type="object" depth={0} />
+                    )}
+                </For>
+             </div>
+        </div>
+    </div>
   )
 }
 

@@ -14,14 +14,16 @@ export default class Engine {
     public camera: Camera;
     public scene: Scene;
     public renderer: Renderer;
-    public gizmo: Gizmo;
+    public gizmo: Gizmo;;
 
-    public lastTime = 0;
     public fps = 0;
     
     private frameId: number = 0;
     private isDestroyed: boolean = false;
     public editMode: "move" | "rotate" = "move"; 
+
+    public lastTime: number = 0;
+
 
     constructor(canvas: HTMLCanvasElement) {
         Logger.init();
@@ -30,13 +32,16 @@ export default class Engine {
         const gl = canvas.getContext("webgl2");
         if (!gl) throw new Error("WebGL2 not supported");
         this.gl = gl;
-
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.disable(this.gl.CULL_FACE)
+        this.gl.depthFunc(this.gl.LEQUAL);
         this.input = new InputManager(canvas);
-        this.player = new Player([0, 0, 0]);
+        this.player = new Player();
         this.camera = new Camera(canvas, this.input, this);
         this.scene = new Scene(this);
         this.renderer = new Renderer(this);
         this.gizmo = new Gizmo(this);
+
         
         this.setupGizmoInput();
     }
@@ -65,14 +70,15 @@ export default class Engine {
     public start() {
         if (this.isDestroyed) return;
         this.player.position = [...this.camera.position];
-        this.loop();
+        const currentTime = performance.now();
+        this.loop(currentTime);
     }
 
-    private loop = () => {
-        const now = performance.now();
-        const dt = now - this.lastTime;
-        this.lastTime = now;
-        this.fps = Math.round(1000 / dt) || 0;
+    private loop = (currentTime: number) => {
+        const dt = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+        this.lastTime = currentTime;
+        state.deltaTime = dt;
+        this.fps = Math.round(1 / dt) || 0;
         if (this.isDestroyed) return;
 
         if (this.canvas.width !== this.canvas.clientWidth || this.canvas.height !== this.canvas.clientHeight) {
@@ -80,7 +86,15 @@ export default class Engine {
             this.canvas.height = this.canvas.clientHeight;
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
-        if (state.mode === "player") this.player.update(this.input, this.camera.yaw);
+        if (state.mode === "player") {
+            this.player.update(this.input, this.camera.yaw);
+            if (!state.gameStarted) {
+                state.gameStarted = true;
+                this.scene.children.forEach(obj => {
+                    obj.start();
+                })
+            }
+        }
         
         // Obsługa dragu Gizma
         if (this.input.mouse[0]) {
@@ -101,7 +115,8 @@ export default class Engine {
         this.renderer.render(this.scene.children, this.camera);
         this.renderer.renderGizmo(this.gizmo.root, this.camera);
         
-        this.frameId = requestAnimationFrame(this.loop);
+        
+        this.frameId = requestAnimationFrame((time) => this.loop(time));
     }
     
     // ... getPlayer i destroy bez zmian ...

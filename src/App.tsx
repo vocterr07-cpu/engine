@@ -1,5 +1,4 @@
 
-import { unwrap } from 'solid-js/store';
 import './App.css'
 import Console from './components/Console/Console';
 import ScriptEditor from './components/ScriptEditor/ScriptEditor';
@@ -8,10 +7,12 @@ import Topbar from './components/Topbar/Topbar';
 import Engine from './engine/Engine';
 import { state, storeActions } from './engine/store';
 import { onCleanup, onMount, Show } from 'solid-js';
-import { Move, Rotate3D } from 'lucide-solid';
 import EditMode from './components/EditMode/EditMode';
 import MouseEventWindow from './components/MouseEventWindow/MouseEventWindow';
 import TouchEventWindow from './components/TouchEventWindow/TouchEventWindow';
+import GlobalVariablesWindow from './components/GlobalVariables/GlobalVariablesWindow';
+import ParticleSystemWindow from './components/ParticleSystemWindow/ParticleSystemWindow';
+import VisualScriptWindow from './components/VisualScripting/VisualScriptWindow';
 
 function App() {
   let canvas: HTMLCanvasElement | undefined;
@@ -55,6 +56,12 @@ function App() {
                 <EditMode/>
               )}
             </Show>
+            <Show when={state.openedWindow === "globalVariables"}>
+              <GlobalVariablesWindow/>
+            </Show>
+            <Show when={state.openedWindow === "visualScript"}>
+              <VisualScriptWindow/>
+            </Show>
             <Show when={state.openedWindow === "script"} fallback={<></>}>
               <ScriptEditor />
             </Show>
@@ -63,6 +70,9 @@ function App() {
             </Show>
             <Show when={state.openedWindow === "touchEvent"} fallback={<></>}>
               <TouchEventWindow/>
+            </Show>
+            <Show when={state.openedWindow === "particleSystem"}>
+              <ParticleSystemWindow/>
             </Show>
           </div>
           <Console />

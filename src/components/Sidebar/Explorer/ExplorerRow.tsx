@@ -10,6 +10,8 @@ import { state, storeActions } from "../../../engine/store"
 import ExplorerContextMenu from "./ExplorerContextMenu"
 import MouseEventComponent from "../../../engine/MouseEventComponent"
 import TouchEventComponent from "../../../engine/TouchEventComponent"
+import ParticleSystem from "../../../engine/ParticleSystem"
+import VisualScript from "../../../engine/VisualScript"
 
 // --- TYPES ---
 
@@ -38,7 +40,9 @@ const ExplorerItem = (props: ExplorerNodeProps) => {
         setSelectedObject, 
         setSelectedMouseEvent,
         setSelectedTouchEvent,
-        setSelectedComponent 
+        setSelectedComponent,
+        setSelectedParticleSystem,
+        setSelectedVisualScript
     } = storeActions;
 
     // 2. Computed Data
@@ -79,7 +83,7 @@ const ExplorerItem = (props: ExplorerNodeProps) => {
             "bg-blue-600 text-white hover:bg-blue-500": isObj && selected,
             "hover:bg-zinc-800 text-zinc-400": !isObj && !selected && !isComp,
             "text-blue-300 hover:bg-zinc-600": isComp && !selected,
-            "bg-zinc-700 text-white": isComp && selected
+            "bg-zinc-700 text-white hover:bg-zinc-600": isComp && selected
         };
     };
 
@@ -89,18 +93,26 @@ const ExplorerItem = (props: ExplorerNodeProps) => {
         if (isGameObject(props.node)) {
             setSelectedObject(props.node);
         } else if (props.node instanceof Script) {
-            setSelectedScript(props.node as Script);
+            setSelectedScript(props.node);
             setOpenedWindow("script");
             setSelectedComponent(props.node);
+        } else if (props.node instanceof VisualScript) {
+            setSelectedVisualScript(props.node);
+            setOpenedWindow("visualScript");
+            setSelectedComponent(props.node);
         } else if (props.node instanceof MouseEventComponent) {
-            setSelectedComponent(props.node as MouseEventComponent);
+            setSelectedComponent(props.node);
             setOpenedWindow("mouseEvent");
-            setSelectedMouseEvent(props.node as MouseEventComponent);
+            setSelectedMouseEvent(props.node);
         }
         else if (props.node instanceof TouchEventComponent) {
-            setSelectedComponent(props.node as TouchEventComponent);
+            setSelectedComponent(props.node);
             setOpenedWindow("touchEvent");
-            setSelectedTouchEvent(props.node as TouchEventComponent);
+            setSelectedTouchEvent(props.node);
+        } else if (props.node instanceof ParticleSystem) {
+            setSelectedComponent(props.node);
+            setOpenedWindow("particleSystem");
+            setSelectedParticleSystem(props.node);
         }
     }
 

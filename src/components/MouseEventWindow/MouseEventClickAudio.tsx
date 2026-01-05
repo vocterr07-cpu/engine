@@ -1,14 +1,13 @@
 import { createSignal, Show } from 'solid-js'
 import { state } from '../../engine/store'
+import { Volume2, Music, Repeat } from "lucide-solid"
 
 const MouseEventClickAudio = () => {
-    // 1. Lokalny "popychacz"
     const [refresh, setRefresh] = createSignal(0);
     const update = () => setRefresh(r => r + 1);
 
-    // 2. Helper dostępowy
     const getEvent = () => {
-        refresh(); // Subskrypcja
+        refresh();
         return state.selectedMouseEvent;
     };
 
@@ -23,12 +22,12 @@ const MouseEventClickAudio = () => {
     }
 
     return (
-        <div class="flex flex-col rounded-md p-3 bg-zinc-800 shadow-md shadow-zinc-950">
-            {/* --- MAIN TOGGLE --- */}
-            <div class="flex items-center justify-between">
-                <p class="font-black text-zinc-400 text-[11px] tracking-[0.1em] uppercase">
-                    Play Audio On Click?
-                </p>
+        <div class="w-full flex flex-col p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 shadow-sm hover:border-zinc-600 transition-colors">
+            <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2 text-zinc-400">
+                    <Volume2 size={14} class="text-blue-400" />
+                    <p class="font-bold text-xs tracking-wider uppercase">Audio Trigger</p>
+                </div>
                 <input
                     type="checkbox"
                     checked={getEvent()?.clickPlayAudio || false}
@@ -39,78 +38,75 @@ const MouseEventClickAudio = () => {
                             update();
                         }
                     }}
-                    class="inputCheckbox"
+                    class="inputCheckbox scale-90"
                 />
             </div>
 
             <Show when={getEvent()?.clickPlayAudio}>
-                <div class="mt-3 flex flex-col gap-2 animate-in fade-in duration-200">
-                    
-                    {/* --- FILE INPUT --- */}
-                    <input 
-                        accept="audio/*"
-                        onInput={handleFileUpload}
-                        type="file"
-                        class="w-full text-[10px] text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-zinc-700 file:text-zinc-300 hover:file:bg-zinc-600 cursor-pointer"
-                    />
-                    
+                <div class="mt-3 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="group relative flex items-center justify-center w-full h-8 bg-zinc-950 border border-dashed border-zinc-700 rounded-md hover:border-blue-500/50 hover:bg-zinc-900 transition-all cursor-pointer">
+                            <div class="flex items-center gap-2 text-zinc-500 group-hover:text-zinc-300">
+                                <Music size={12} />
+                                <span class="text-[10px] font-mono truncate max-w-[180px]">
+                                    {getEvent()?.audioUrl ? "Change File..." : "Select Audio File"}
+                                </span>
+                            </div>
+                            <input accept="audio/*" onInput={handleFileUpload} type="file" class="absolute inset-0 opacity-0 cursor-pointer" />
+                        </label>
+                    </div>
+
                     <Show when={getEvent()?.audioUrl}>
-                        <div class="flex flex-col gap-2">
-                            {/* Status & Test Button */}
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-[9px] text-green-500 font-mono italic">
-                                    Source loaded ✓
+                        <div class="flex flex-col gap-3 p-2 rounded-md bg-zinc-950/30 border border-zinc-800/50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[9px] text-green-500 font-mono italic flex items-center gap-1">
+                                    <span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span> READY
                                 </span>
                                 <button 
                                     onClick={() => {
                                         const url = state.selectedMouseEvent?.audioUrl;
                                         if (url) new Audio(url).play();
                                     }}
-                                    class="text-[9px] bg-zinc-700 px-2 py-0.5 rounded hover:bg-zinc-600 text-zinc-200 border border-zinc-600"
+                                    class="text-[9px] bg-blue-600/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all font-bold"
                                 >
-                                    ▶ Test
+                                    PLAY TEST
                                 </button>
                             </div>
 
-                            {/* --- REPEAT TOGGLE --- */}
-                            <div class='flex items-center justify-between bg-zinc-900/50 p-2 rounded border border-zinc-700/50'>
-                                <p class='tracking-[0.1em] font-black text-zinc-400 text-[10px]'>LOOP HOLD</p>
-                                <input
-                                    type="checkbox"
-                                    class="inputCheckbox"
-                                    checked={getEvent()?.repeatAudio || false}
-                                    onInput={(e) => {
-                                        const ev = state.selectedMouseEvent;
-                                        if (ev) {
-                                            ev.repeatAudio = e.currentTarget.checked;
-                                            update();
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            {/* --- INTERVAL INPUT --- */}
-                            <Show when={getEvent()?.repeatAudio}>
-                                <div class='flex items-center justify-between gap-2'>
-                                    <p class='tracking-[0.1em] font-bold text-zinc-500 text-[10px] whitespace-nowrap'>
-                                        Interval (sec):
-                                    </p>
-                                    <input 
-                                        type='number'
-                                        min="0.1"
-                                        step="0.1"
-                                        value={getEvent()?.repeatInterval || 1.0}
+                            <div class="space-y-2 pt-2 border-t border-zinc-800/50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2 text-zinc-500">
+                                        <Repeat size={12} />
+                                        <p class="text-[10px] font-bold uppercase tracking-tight">Auto-Repeat</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        class="inputCheckbox scale-75"
+                                        checked={getEvent()?.repeatAudio || false}
                                         onInput={(e) => {
-                                            const val = parseFloat(e.currentTarget.value);
                                             const ev = state.selectedMouseEvent;
-                                            if (ev && !isNaN(val)) {
-                                                ev.repeatInterval = val;
+                                            if (ev) {
+                                                ev.repeatAudio = e.currentTarget.checked;
+                                                update();
                                             }
                                         }}
-                                        class='w-16 bg-zinc-950 border border-zinc-700 rounded text-xs text-center text-zinc-200 focus:border-blue-500 outline-none p-1'
                                     />
                                 </div>
-                            </Show>
+                                <Show when={getEvent()?.repeatAudio}>
+                                    <div class="flex items-center justify-between gap-2 pl-5">
+                                        <p class="text-[10px] text-zinc-500 font-medium">Delay (sec)</p>
+                                        <input 
+                                            type='number' step="0.1"
+                                            value={getEvent()?.repeatInterval || 1.0}
+                                            onInput={(e) => {
+                                                const val = parseFloat(e.currentTarget.value);
+                                                if (!isNaN(val)) state.selectedMouseEvent!.repeatInterval = val;
+                                            }}
+                                            class='w-16 bg-zinc-900 border border-zinc-700 rounded text-[10px] text-center text-zinc-200 outline-none p-1 font-mono'
+                                        />
+                                    </div>
+                                </Show>
+                            </div>
                         </div>
                     </Show>
                 </div>

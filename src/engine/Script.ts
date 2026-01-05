@@ -1,5 +1,5 @@
 import Component from "./Component";
-
+import { state } from "./store";
 
 export default class Script extends Component {
     public sourceCode: string = "";
@@ -8,21 +8,45 @@ export default class Script extends Component {
 
     constructor(name: string) {
         super(name);
+        // Kod startowy dla użytkownika
         this.sourceCode = `
-        class MyScript {
+class MyScript {
     gameObject; 
-    lastLogTime;
+    isFlying = true;
+    speed = 10.0;
 
     start() {
-        console.log("Start!", this.gameObject.name);
-        this.lastLogTime = 0;
+        console.log("Rakieta gotowa!");
     }
 
     update() {
-        const now = Date.now();
-        if (now - this.lastLogTime > 1000) {
-            console.log("Status: ", this.gameObject.position);
-            this.lastLogTime = now;
+        if (!this.isFlying) return;
+
+        // Ruch do góry
+        this.gameObject.position[1] += this.speed * 0.016;
+
+        // Detonacja na wysokości 50
+        if (this.gameObject.position[1] > 50) {
+            this.explode();
+        }
+    }
+
+    explode() {
+        this.isFlying = false;
+        this.gameObject.scale = [0, 0, 0];
+
+        // Wywołanie systemu cząsteczek
+        if (system && system.engine) {
+             system.engine.spawnExplosion(
+                this.gameObject.position[0],
+                this.gameObject.position[1],
+                this.gameObject.position[2],
+                200,             // Ilość
+                [1.0, 0.5, 0.0]  // Kolor
+            );
+            console.log("BOOM!");
+        } else {
+            console.error("Brak dostępu do silnika (system.engine)!");
         }
     }
 }
@@ -30,60 +54,78 @@ export default class Script extends Component {
     }
 
     public compile() {
-    if (!this.gameObject) return;
-    try {
-        const apiWrapper = `
-            const getPlayer = () => {
-                return system.gameObject.scene?.getPlayer();
+        if (!this.gameObject) return;
+        
+        try {
+            // Przygotowujemy obiekt system
+            const systemArg = {
+                gameObject: this.gameObject,
+                state: state,
+                engine: state.engine
             };
 
-            const getObject = () => {
-                return system.gameObject;
-            }
-                return (
-                    ${this.sourceCode}
-                )
+            // WAŻNE: Nie deklarujemy tu 'const system', bo 'system' jest już argumentem funkcji!
+            const apiWrapper = `
+                // Helpery dla zmiennych globalnych
+                const gv = new Proxy({}, {
+                    get: (target, prop) => {
+                        const v = system.state.variables.find(v => v.name === prop);
+                        return v ? v.value : undefined;
+                    },
+                    set: (target, prop, value) => {
+                        const v = system.state.variables.find(v => v.name === prop);
+                        if (v) {
+                            v.value = value;
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+
+                // Tutaj wklejamy kod klasy użytkownika
+                // Dzięki temu, że jest wewnątrz tej funkcji, "widzi" zmienną 'system' z argumentu
+                ${this.sourceCode}
+
+                return MyScript;
+            `;
+
+            // Tworzymy funkcję, która przyjmuje jeden argument o nazwie "system"
+            const createClass = new Function("system", apiWrapper);
             
-        `;
+            // Wywołujemy ją, przekazując nasz obiekt
+            const ClassDef = createClass(systemArg);
 
-        // Tworzymy funkcję, która oczekuje argumentu o nazwie "system"
-        const createClass = new Function("system", apiWrapper);
-        
-        // --- TUTAJ BYŁ BŁĄD ---
-        // Musisz przekazać 'this', żeby 'system' w środku nie był undefined
-        const ClassDef = createClass(this); 
-        
-        if (typeof ClassDef !== 'function') {
-            throw new Error("Skrypt musi zwracać klasę!");
+            if (!ClassDef || typeof ClassDef !== 'function') {
+                throw new Error("Kod musi zawierać definicję klasy (np. class MyScript).");
+            }
+
+            // Tworzymy instancję
+            this.instance = new ClassDef();
+            this.instance.gameObject = this.gameObject;
+
+            // Bindujemy metody
+            if (this.instance.start) this.instance.start = this.instance.start.bind(this.instance);
+            if (this.instance.update) this.instance.update = this.instance.update.bind(this.instance);
+
+            // Odpalamy start
+            if (this.instance.start) this.instance.start();
+
+            this.isInitialized = true;
+            console.log(`Skrypt ${this.name} działa.`);
+
+        } catch (e) {
+            this.isInitialized = false;
+            console.error("BŁĄD SKRYPTU:", e);
         }
-
-        this.instance = new ClassDef();
-        this.instance.gameObject = this.gameObject;
-
-        // Bindowanie (żeby 'this' w skrypcie użytkownika zawsze działało)
-        if (this.instance.start) {
-            this.instance.start = this.instance.start.bind(this.instance);
-        }
-        
-        if (this.instance.update) {
-            this.instance.update = this.instance.update.bind(this.instance);
-        }
-
-        if (this.instance.start) this.instance.start();
-        this.isInitialized = true;
-    } catch (e) {
-        console.error(`Błąd w skrypcie ${this.name}:`, e);
     }
-}
 
     public update() {
         if (this.isInitialized && this.instance && this.instance.update) {
             try {
                 this.instance.update();
-            } catch(e) {
+            } catch (e) {
                 this.isInitialized = false;
-                console.error(`Runtime Error w skrypcie ${this.name} na obiekcie ${this.gameObject?.name}: ${e}`);
-                console.warn(`Skrypt ${this.name} zostal zatrzymany dla bezpieczenstwa aplikacji.`)
+                console.error("Runtime Error:", e);
             }
         }
     }

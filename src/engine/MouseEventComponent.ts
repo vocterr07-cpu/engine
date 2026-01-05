@@ -30,6 +30,7 @@ export default class MouseEventComponent extends Component {
 
     update() {
         if (this.debounce > 0) this.debounce--;
+        if (state.mode === "camera") return;
 
         const engine = this.gameObject?.scene?.engine;
         if (!engine) return;

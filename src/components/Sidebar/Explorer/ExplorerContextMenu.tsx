@@ -3,15 +3,17 @@ import ExplorerContextMenuItem from "./ExplorerContextMenuItem"
 import GameObject from "../../../engine/GameObject";
 import Component from "../../../engine/Component";
 import Script from "../../../engine/Script";
-import MouseEventComponent from "../../../engine/MouseEventComponent"; // Zakładam import
+import MouseEventComponent from "../../../engine/MouseEventComponent";
 import { state, storeActions } from "../../../engine/store";
 import TouchEventComponent from "../../../engine/TouchEventComponent";
+import ParticleSystem from "../../../engine/ParticleSystem";
+import VisualScript from "../../../engine/VisualScript";
 
 interface Props {
     menuPos: { x: number, y: number };
     node: GameObject | Component;
-    onClose: () => void;   // Callback do zamknięcia menu
-    onExpand: () => void;  // Callback do rozwinięcia folderu po dodaniu
+    onClose: () => void;
+    onExpand: () => void;
 }
 
 const ExplorerContextMenu = (props: Props) => {
@@ -20,28 +22,38 @@ const ExplorerContextMenu = (props: Props) => {
         setSelectedScript, 
         setOpenedWindow,
         setSelectedMouseEvent,
-        setSelectedTouchEvent
+        setSelectedTouchEvent,
+        setSelectedComponent,
+        setSelectedParticleSystem,
+        setSelectedVisualScript
     } = storeActions;
 
-    // Helper typu
     const isGameObject = (node: any): node is GameObject => node instanceof GameObject;
-
-    // --- ACTIONS ---
 
     const handleAddScript = () => {
         if (!isGameObject(props.node)) return;
         const obj = props.node;
-        
         const newScript = new Script(`Script_${obj.components.length}`);
         newScript.gameObject = obj;
-        
         addComponentToObject(obj, newScript);
-
-        // UI Updates
-        props.onExpand(); // Rozwijamy folder
+        props.onExpand();
         setSelectedScript(newScript);
+        setSelectedComponent(newScript)
         setOpenedWindow("script");
-        props.onClose(); // Zamykamy menu
+        props.onClose();
+    }
+
+    const handleAddVisualScript = () => {
+        if (!isGameObject(props.node)) return;
+        const obj = props.node;
+        const newScript = new VisualScript(`Script_${obj.components.length}`);
+        newScript.gameObject = obj;
+        addComponentToObject(obj, newScript);
+        props.onExpand();
+        setSelectedVisualScript(newScript);
+        setSelectedComponent(newScript)
+        setOpenedWindow("visualScript");
+        props.onClose();
     }
 
     const handleAddMouseEvent = () => {
@@ -49,12 +61,13 @@ const ExplorerContextMenu = (props: Props) => {
         const obj = props.node;
         if (!state.selectedObject) return;
         const len = state.selectedObject.components.length;
-        const newEvent = new MouseEventComponent(`MouseEvent_${len}`); // Zakładam konstruktor
+        const newEvent = new MouseEventComponent(`MouseEvent_${len}`);
         newEvent.gameObject = obj;
         addComponentToObject(obj, newEvent);
         setOpenedWindow("mouseEvent");
+        setSelectedComponent(newEvent);
         props.onExpand();
-        setSelectedMouseEvent(newEvent); // Zakładam że masz taką akcję
+        setSelectedMouseEvent(newEvent);
         props.onClose();
     }
 
@@ -67,13 +80,34 @@ const ExplorerContextMenu = (props: Props) => {
         newEvent.gameObject = obj;
         addComponentToObject(obj, newEvent);
         setOpenedWindow("touchEvent");
+        setSelectedComponent(newEvent);
         props.onExpand();
         setSelectedTouchEvent(newEvent);
         props.onClose();
     }
 
+    // --- NOWE: Dodawanie Particle System ---
+    const handleAddParticleSystem = () => {
+        if (!isGameObject(props.node)) return;
+        if (!state.engine) return; // Potrzebujemy dostępu do GL
+
+        const obj = props.node;
+        const ps = new ParticleSystem(state.engine.gl);
+        obj.particleSystem = ps;
+        ps.gameObject = obj;
+        addComponentToObject(obj, ps);
+        setOpenedWindow("particleSystem");
+        setSelectedComponent(ps);
+        setSelectedParticleSystem(ps);
+        props.onExpand();
+        
+        console.log("Particle System added to " + obj.name);
+        props.onClose();
+    }
+
+    // ----------------------------------------
+
     const handleDelete = () => {
-        // Tu logika usuwania
         console.log("Delete", props.node.name);
         props.onClose();
     }
@@ -87,10 +121,14 @@ const ExplorerContextMenu = (props: Props) => {
             >
                 <Show when={isGameObject(props.node)}>
                     <ExplorerContextMenuItem label="Add Script" handleClick={handleAddScript} />
+                    <ExplorerContextMenuItem label="Add Visual Script" handleClick={handleAddVisualScript} />
+                    <ExplorerContextMenuItem label="Add Particle System" handleClick={handleAddParticleSystem} />
+                    <div class="h-px bg-zinc-700 my-1"></div>
                     <ExplorerContextMenuItem label="Add Mouse Event" handleClick={handleAddMouseEvent} />
                     <ExplorerContextMenuItem label="Add Touch Event" handleClick={handleAddTouchEvent}/>
                 </Show>
                 
+                <div class="h-px bg-zinc-700 my-1"></div>
                 <ExplorerContextMenuItem label="Delete" handleClick={handleDelete} />
             </div>
         </Portal>
