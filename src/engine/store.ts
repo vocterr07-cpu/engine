@@ -23,6 +23,13 @@ export interface GameVariable {
     value: any;
 }
 
+// Ustawienia narzędzi terenu
+export interface TerrainSettings {
+    brushRadius: number;
+    brushStrength: number;
+    selectedLayer: number; // 0-7 (dla Texture Array)
+}
+
 interface EditorState {
     language: string;
     deltaTime: number;
@@ -43,6 +50,8 @@ interface EditorState {
     editMode: "move" | "rotate" | "sculpt" | "paint";
     gameStarted: boolean;
     variables: GameVariable[];
+    // Dodane ustawienia terenu
+    terrainSettings: TerrainSettings;
 }
 
 export const state = createMutable<EditorState>({
@@ -65,6 +74,12 @@ export const state = createMutable<EditorState>({
     editMode: "move",
     gameStarted: false,
     variables: [{id: "1", name: "TestInteger", type: "Integer", value: 1}, {id: "2", name: "TestString", type: "String", value: "testString"}],
+    // Domyślne ustawienia pędzla
+    terrainSettings: {
+        brushRadius: 3.0,
+        brushStrength: 2.0,
+        selectedLayer: 0
+    }
 });
 
 export const storeActions = {
@@ -106,42 +121,50 @@ export const storeActions = {
         state.version++;
     },
 
-    // --- NAPRAWIONE DLA CREATEMUTABLE ---
     addLogsBatch: (batch: LogEntry[]) => {
-        // 1. Łączymy obecne logi z nowymi
         let updated = [...state.logs, ...batch];
-
-        // 2. Przycinamy bufor do 500, jeśli przekroczono
         if (updated.length > 500) {
             updated = updated.slice(updated.length - 500);
         }
-
-        // 3. Bezpośrednie przypisanie (Solid wykryje zmianę)
         state.logs = updated;
     },
 
     clearLogs: () => { state.logs = []; },
 
     setMode: (mode: "player" | "camera") => { state.mode = mode },
+    
+    // Ważne: Akcja do zmiany trybu edycji (Move/Rotate/Sculpt/Paint)
+    setEditMode: (mode: "move" | "rotate" | "sculpt" | "paint") => { 
+        state.editMode = mode; 
+    },
+
+    // Ważne: Akcje do Terenu
+    setTerrainLayer: (layerIndex: number) => {
+        state.terrainSettings.selectedLayer = layerIndex;
+    },
+    setBrushRadius: (radius: number) => {
+        state.terrainSettings.brushRadius = radius;
+    },
+    setBrushStrength: (strength: number) => {
+        state.terrainSettings.brushStrength = strength;
+    },
+
     removeVariable: (variableId: string) => {
-        // Znajdź indeks
         const index = state.variables.findIndex(v => v.id === variableId);
-        // Jeśli znaleziono, wytnij go z tablicy
         if (index !== -1) {
             state.variables.splice(index, 1);
         }
     },
 
-    // Dodaj też updateVariable, bo będzie potrzebne do edycji:
     updateVariable: (id: string, data: Partial<GameVariable>) => {
         const v = state.variables.find(v => v.id === id);
         if (v) {
-            // Nadpisz tylko te pola, które przyszły w 'data'
             if (data.name !== undefined) v.name = data.name;
             if (data.type !== undefined) v.type = data.type;
             if (data.value !== undefined) v.value = data.value;
         }
     },
+    
     getVariable: (name: string) => {
         return state.variables.find(v => v.name === name);
     }

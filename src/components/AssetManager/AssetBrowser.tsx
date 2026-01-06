@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
-import { state } from "../../engine/store";
+import { state, storeActions } from "../../engine/store";
 import { Image, FileBox, UploadCloud, RefreshCw } from "lucide-solid";
 import Terrain from "../../engine/Terrain"; // Upewnij się co do ścieżki
 
@@ -31,16 +31,34 @@ const AssetBrowser = () => {
         return state.engine?.assetManager.assets;
     }
 
-    const handleAssetClick = (asset: any) => {
-        console.log("Wybrano asset:", asset);
-        if (state.editMode === "paint" && asset.type === "image" && state.selectedObject instanceof Terrain) {
-            const terrain = state.selectedObject as Terrain;
-            if (state.engine) {
-                terrain.setLayerTexture(state.engine.gl, 1, asset.url);
-                console.log("Przypisano teksturę do slotu 0");
-            }
+    // Wewnątrz komponentu AssetBrowser
+
+const handleAssetClick = (asset: any) => {
+    // 1. Sprawdzamy czy to obrazek i czy mamy teren
+    let terrain = state.selectedObject instanceof Terrain 
+        ? state.selectedObject 
+        : state.objects.find(o => o instanceof Terrain);
+
+    if (asset.type === "image" && terrain) {
+        terrain = terrain as Terrain;
+        
+        // 2. Używamy metody "useTexture", która sama znajduje wolny slot
+        // Uwaga: Zakładam, że masz metodę useTexture w Terrain.ts (pisałem ją wcześniej)
+        const slotIndex = terrain.addTexture(asset.url);
+        
+        if (slotIndex !== -1) {
+            // 3. Ustawiamy w globalnym stanie: "Maluj tym slotem!"
+            storeActions.setTerrainLayer(slotIndex);
+            
+            // 4. Włączamy tryb pędzla
+            state.editMode = "paint";
+
+            console.log(`Wybrano teksturę: ${asset.name} (Slot: ${slotIndex})`);
+        } else {
+            alert("Limit 8 tekstur osiągnięty!");
         }
-    };
+    }
+};
 
     return (
         <div class="w-full h-full bg-[#1e1e1e] p-2 overflow-y-auto">

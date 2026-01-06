@@ -29,6 +29,7 @@ const Topbar: Component<{}> = () => {
         const engine = state.engine;
         if (!engine) return;
         const newTerrain = new Terrain(engine.gl, "Terrain");
+        newTerrain.color = [1,1,1];
         storeActions.addObject(newTerrain);
     }
    

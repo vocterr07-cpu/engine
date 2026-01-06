@@ -17,9 +17,7 @@ export default class Renderer {
 
     // Lokacje Uniformów - Teren
     public locIsTerrain!: WebGLUniformLocation;
-    public locTerrainTex0!: WebGLUniformLocation;
-    public locTerrainTex1!: WebGLUniformLocation;
-    public locTerrainTex2!: WebGLUniformLocation;
+    public locTerrainArray!: WebGLUniformLocation;
 
     constructor(engine: Engine) {
         this.gl = engine.gl;
@@ -27,59 +25,47 @@ export default class Renderer {
     }
 
     public render(objects: GameObject[], camera: Camera) {
-        // Czyścimy ekran i bufor głębi
         this.gl.clearColor(0.1, 0.1, 0.1, 1.0);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         this.gl.useProgram(this.mainProgram);
 
-        // Ustawiamy macierze kamery raz na klatkę
         this.gl.uniformMatrix4fv(this.locMainView, false, camera.viewMatrix);
         this.gl.uniformMatrix4fv(this.locMainProj, false, camera.projMatrix);
 
-        // 1. Rysowanie obiektów stałych (Nieprzezroczystych)
         const drawOpaque = (obj: GameObject) => {
             if (obj.mesh) {
                 obj.mesh.bind();
                 
-                // Przekazujemy macierz modelu i kolor obiektu
                 this.gl.uniformMatrix4fv(this.locMainModel, false, obj.getMatrixModel());
                 this.gl.uniform3fv(this.locMainColor, obj.color);
 
                 // --- LOGIKA TERENU ---
                 if (obj instanceof Terrain) {
-                    // Włączamy tryb terenu w shaderze
                     this.gl.uniform1i(this.locIsTerrain, 1);
-
-                    // Bindujemy 3 tekstury warstw do slotów 1, 2 i 3
-                    if (obj.textureLayers[0]) {
-                        obj.textureLayers[0].bind(1);
-                        this.gl.uniform1i(this.locTerrainTex0, 1);
-                    }
-                    if (obj.textureLayers[1]) {
-                        obj.textureLayers[1].bind(2);
-                        this.gl.uniform1i(this.locTerrainTex1, 2);
-                    }
-                    if (obj.textureLayers[2]) {
-                        obj.textureLayers[2].bind(3);
-                        this.gl.uniform1i(this.locTerrainTex2, 3);
+                    
+                    // Bindujemy TextureArray do slotu 1
+                    // (Slot 0 jest zajęty przez u_texture, nawet jeśli go nie używamy)
+                    if (obj.textureArray) {
+                        obj.textureArray.bind(1);
+                        // Nie musimy tu ustawiać uniform1i, bo zrobiliśmy to w setupMainProgram
+                        // ale dla pewności można zostawić:
+                        this.gl.uniform1i(this.locTerrainArray, 1);
                     }
                 } 
                 // --- LOGIKA ZWYKŁYCH OBIEKTÓW ---
                 else {
-                    // Wyłączamy tryb terenu
                     this.gl.uniform1i(this.locIsTerrain, 0);
 
                     if (obj.useTexture && obj.texture) {
-                        obj.texture.bind(0); // Standardowe obiekty na slocie 0
-                        this.gl.uniform1i(this.locMainTexture, 0);
+                        obj.texture.bind(0); // Slot 0
+                        // To też jest ustawione na sztywno w setup, ale bind jest konieczny
                         this.gl.uniform1i(this.locMainUseTexture, 1);
                     } else {
                         this.gl.uniform1i(this.locMainUseTexture, 0);
                     }
                 }
 
-                // Wykonujemy rysowanie (Indeksowane lub tablicowe)
                 if (obj.mesh.indexCount > 0) {
                     this.gl.drawElements(this.gl.TRIANGLES, obj.mesh.indexCount, this.gl.UNSIGNED_INT, 0);
                 } else {
@@ -87,14 +73,12 @@ export default class Renderer {
                 }
             }
             
-            // Rekurencyjne rysowanie dzieci
             obj.children.forEach(child => drawOpaque(child));
         };
 
-        // Renderujemy główną scenę
         objects.forEach(obj => drawOpaque(obj));
 
-        // 2. Rysowanie efektów (Particles)
+        // Rysowanie efektów
         const drawEffects = (obj: GameObject) => {
             if (obj.particleSystem) {
                 obj.particleSystem.render(this.gl, {
@@ -121,7 +105,7 @@ export default class Renderer {
                 this.gl.uniformMatrix4fv(this.locMainModel, false, obj.getMatrixModel());
                 this.gl.uniform3fv(this.locMainColor, obj.color);
                 this.gl.uniform1i(this.locMainUseTexture, 0);
-                this.gl.uniform1i(this.locIsTerrain, 0); // Gizmo to nie teren
+                this.gl.uniform1i(this.locIsTerrain, 0);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, obj.mesh.vertexCount);
             }
             obj.children.forEach(child => drawRecursive(child));
@@ -131,103 +115,94 @@ export default class Renderer {
 
     private setupMainProgram() {
         this.mainProgram = this.gl.createProgram()!;
-
         const vs = `#version 300 es
             layout(location = 0) in vec3 pos;
             layout(location = 1) in vec2 a_texCoord;
             layout(location = 2) in vec3 a_normal;
-            layout(location = 3) in vec3 a_weights; // Wagi splattingu
-
-            uniform mat4 u_model;
-            uniform mat4 u_view;
-            uniform mat4 u_proj;
-
-            out vec2 v_texCoord;
-            out vec3 v_normal;
-            out vec3 v_fragPos;
-            out vec3 v_weights;
-
+            layout(location = 3) in vec4 a_w1;
+            layout(location = 4) in vec4 a_w2;
+            uniform mat4 u_model, u_view, u_proj;
+            out vec2 v_uv; out vec3 v_norm; out vec4 v_w1; out vec4 v_w2;
             void main() {
-                v_texCoord = a_texCoord;
-                v_normal = mat3(transpose(inverse(u_model))) * a_normal;
-                v_fragPos = vec3(u_model * vec4(pos, 1.0));
-                v_weights = a_weights;
+                v_uv = a_texCoord; v_w1 = a_w1; v_w2 = a_w2;
+                v_norm = mat3(transpose(inverse(u_model))) * a_normal;
                 gl_Position = u_proj * u_view * u_model * vec4(pos, 1.0);
-            }
-        `;
-
+            }`;
         const fs = `#version 300 es
-            precision highp float;
+    precision highp float;
+    precision highp sampler2DArray;
 
-            in vec2 v_texCoord;
-            in vec3 v_normal;
-            in vec3 v_fragPos;
-            in vec3 v_weights;
+    in vec2 v_uv;
+    in vec3 v_norm;
+    in vec4 v_w1;
+    in vec4 v_w2;
 
-            uniform sampler2D u_texture;
-            uniform sampler2D u_terrainTex0;
-            uniform sampler2D u_terrainTex1;
-            uniform sampler2D u_terrainTex2;
+    uniform sampler2D u_tex;
+    uniform sampler2DArray u_terArray;
 
-            uniform bool u_useTexture;
-            uniform bool u_isTerrain;
-            uniform vec3 u_color;
+    uniform bool u_useTex;
+    uniform bool u_isTer;
+    uniform vec3 u_color; // ZMIENIONO Z u_col NA u_color, żeby pasowało do JS
 
-            out vec4 outColor;
+    out vec4 fCol;
 
-            void main() {
-                vec3 norm = normalize(v_normal);
-                vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-                float diff = max(dot(norm, lightDir), 0.0);
-                float ambient = 0.3;
-                vec3 lighting = (diff + ambient) * vec3(1.0, 1.0, 1.0);
-                
-                vec4 baseColor = vec4(u_color, 1.0);
+    void main() {
+        vec3 n = normalize(v_norm);
+        vec3 l = normalize(vec3(0.5, 1.0, 0.3));
+        
+        // --- TESTOWE OŚWIETLENIE (Zwiększony ambient, żeby nie było czarno) ---
+        float d = max(dot(n, l), 0.0) * 0.7 + 0.4; 
+        
+        vec4 baseColor = vec4(u_color, 1.0);
 
-                if (u_isTerrain) {
-                    vec4 t0 = texture(u_terrainTex0, v_texCoord);
-                    vec4 t1 = texture(u_terrainTex1, v_texCoord);
-                    vec4 t2 = texture(u_terrainTex2, v_texCoord);
-                    // Splatting na podstawie wag RGB
-                    baseColor = t0 * v_weights.r + t1 * v_weights.g + t2 * v_weights.b;
-                    baseColor *= vec4(u_color, 1.0);
-                } 
-                else if (u_useTexture) {
-                    baseColor = texture(u_texture, v_texCoord) * vec4(u_color, 1.0);
-                }
+        if (u_isTer) {
+            // Pobieramy próbki
+            vec4 c0 = texture(u_terArray, vec3(v_uv, 0.0));
+            vec4 c1 = texture(u_terArray, vec3(v_uv, 1.0));
+            vec4 c2 = texture(u_terArray, vec3(v_uv, 2.0));
+            vec4 c3 = texture(u_terArray, vec3(v_uv, 3.0));
+            vec4 c4 = texture(u_terArray, vec3(v_uv, 4.0));
+            vec4 c5 = texture(u_terArray, vec3(v_uv, 5.0));
+            vec4 c6 = texture(u_terArray, vec3(v_uv, 6.0));
+            vec4 c7 = texture(u_terArray, vec3(v_uv, 7.0));
 
-                outColor = vec4(baseColor.rgb * lighting, baseColor.a);
-            }
-        `;
-
-        const createShader = (type: number, src: string) => {
-            const shader = this.gl.createShader(type)!;
-            this.gl.shaderSource(shader, src);
-            this.gl.compileShader(shader);
-            if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-                console.error("Shader Error:", this.gl.getShaderInfoLog(shader));
-            }
-            this.gl.attachShader(this.mainProgram, shader);
-        };
-
-        createShader(this.gl.VERTEX_SHADER, vs);
-        createShader(this.gl.FRAGMENT_SHADER, fs);
-
-        this.gl.linkProgram(this.mainProgram);
-        if (!this.gl.getProgramParameter(this.mainProgram, this.gl.LINK_STATUS)) {
-            console.error("Program Link Error:", this.gl.getProgramInfoLog(this.mainProgram));
+            // MIESZANIE - sprawdzamy czy suma wag nie jest zerem
+            vec4 mix1 = c0 * v_w1.r + c1 * v_w1.g + c2 * v_w1.b + c3 * v_w1.a;
+            vec4 mix2 = c4 * v_w2.r + c5 * v_w2.g + c6 * v_w2.b + c7 * v_w2.a;
+            
+            baseColor = (mix1 + mix2);
+            
+            // Jeśli wszystko jest czarne, wymuś kolor testowy, żeby sprawdzić czy to wina wag
+            if(baseColor.a < 0.1) baseColor = vec4(1.0, 0.0, 1.0, 1.0); // Fioletowy = błąd wag
+            
+            baseColor *= vec4(u_color, 1.0);
+        } else if (u_useTex) {
+            baseColor = texture(u_tex, v_uv) * vec4(u_color, 1.0);
         }
 
-        // Pobieranie lokacji uniformów
+        fCol = vec4(baseColor.rgb * d, baseColor.a);
+    }
+`;
+
+        const compile = (t: number, s: string) => {
+            const sh = this.gl.createShader(t)!;
+            this.gl.shaderSource(sh, s); this.gl.compileShader(sh);
+            this.gl.attachShader(this.mainProgram, sh);
+        };
+        compile(this.gl.VERTEX_SHADER, vs); compile(this.gl.FRAGMENT_SHADER, fs);
+        this.gl.linkProgram(this.mainProgram);
+
         this.locMainModel = this.gl.getUniformLocation(this.mainProgram, "u_model")!;
         this.locMainView = this.gl.getUniformLocation(this.mainProgram, "u_view")!;
         this.locMainProj = this.gl.getUniformLocation(this.mainProgram, "u_proj")!;
         this.locMainColor = this.gl.getUniformLocation(this.mainProgram, "u_color")!;
-        this.locMainTexture = this.gl.getUniformLocation(this.mainProgram, "u_texture")!;
-        this.locMainUseTexture = this.gl.getUniformLocation(this.mainProgram, "u_useTexture")!;
-        this.locIsTerrain = this.gl.getUniformLocation(this.mainProgram, "u_isTerrain")!;
-        this.locTerrainTex0 = this.gl.getUniformLocation(this.mainProgram, "u_terrainTex0")!;
-        this.locTerrainTex1 = this.gl.getUniformLocation(this.mainProgram, "u_terrainTex1")!;
-        this.locTerrainTex2 = this.gl.getUniformLocation(this.mainProgram, "u_terrainTex2")!;
+        this.locMainTexture = this.gl.getUniformLocation(this.mainProgram, "u_tex")!;
+        this.locMainUseTexture = this.gl.getUniformLocation(this.mainProgram, "u_useTex")!;
+        this.locIsTerrain = this.gl.getUniformLocation(this.mainProgram, "u_isTer")!;
+        this.locTerrainArray = this.gl.getUniformLocation(this.mainProgram, "u_terArray")!;
+
+        this.gl.useProgram(this.mainProgram);
+        this.gl.uniform1i(this.locMainTexture, 0);
+        this.gl.uniform1i(this.locTerrainArray, 1);
     }
 }
