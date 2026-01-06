@@ -13,6 +13,8 @@ import TouchEventWindow from './components/TouchEventWindow/TouchEventWindow';
 import GlobalVariablesWindow from './components/GlobalVariables/GlobalVariablesWindow';
 import ParticleSystemWindow from './components/ParticleSystemWindow/ParticleSystemWindow';
 import VisualScriptWindow from './components/VisualScripting/VisualScriptWindow';
+import AssetBrowser from './components/AssetManager/AssetBrowser';
+import BottomPanel from './components/BottomPanel/BottomPanel';
 
 function App() {
   let canvas: HTMLCanvasElement | undefined;
@@ -75,7 +77,7 @@ function App() {
               <ParticleSystemWindow/>
             </Show>
           </div>
-          <Console />
+          <BottomPanel/>
         </div>
 
         <Sidebar />

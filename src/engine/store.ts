@@ -40,6 +40,7 @@ interface EditorState {
     logs: LogEntry[];
     version: number;
     mode: "camera" | "player";
+    editMode: "move" | "rotate" | "sculpt" | "paint";
     gameStarted: boolean;
     variables: GameVariable[];
 }
@@ -57,10 +58,11 @@ export const state = createMutable<EditorState>({
     selectedTouchEvent: null,
     selectedParticleSystem: null,
     openedContextMenuId: null,
-    openedWindow: "visualScript",
+    openedWindow: "",
     logs: [],
     version: 0,
     mode: "camera",
+    editMode: "move",
     gameStarted: false,
     variables: [{id: "1", name: "TestInteger", type: "Integer", value: 1}, {id: "2", name: "TestString", type: "String", value: "testString"}],
 });

@@ -1,3 +1,4 @@
+import { AssetManager } from "./AssetManager";
 import Camera from "./Camera";
 import Gizmo from "./Gizmo";
 import InputManager from "./InputManager";
@@ -9,6 +10,7 @@ import { state } from "./store";
 export default class Engine {
     public canvas: HTMLCanvasElement;
     public gl: WebGL2RenderingContext;
+    public assetManager: AssetManager;
     public input: InputManager;
     private player: Player;
     public camera: Camera;
@@ -20,7 +22,7 @@ export default class Engine {
     
     private frameId: number = 0;
     private isDestroyed: boolean = false;
-    public editMode: "move" | "rotate" = "move"; 
+    
 
     public lastTime: number = 0;
 
@@ -35,6 +37,7 @@ export default class Engine {
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.disable(this.gl.CULL_FACE)
         this.gl.depthFunc(this.gl.LEQUAL);
+        this.assetManager = new AssetManager();
         this.input = new InputManager(canvas);
         this.player = new Player();
         this.camera = new Camera(canvas, this.input, this);
@@ -87,13 +90,16 @@ export default class Engine {
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
         if (state.mode === "player") {
-            this.player.update(this.input, this.camera.yaw);
+            this.player.update(this.input, this.camera.yaw);      
             if (!state.gameStarted) {
                 state.gameStarted = true;
                 this.scene.children.forEach(obj => {
                     obj.start();
                 })
             }
+            this.scene.children.forEach((obj) => {
+                obj.update();
+            })
         }
         
         // Obsługa dragu Gizma

@@ -1,4 +1,4 @@
-    // @ts-nocheck
+//@ts-nocheck
 
 export type Vec3 = [number, number, number];
 
@@ -102,15 +102,6 @@ export function normalize(v: Vec3): Vec3 {
 }
 export function dot(a: Vec3, b: Vec3): number { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
 
-// Funkcja do transformowania punktu przez macierz (Local Space -> World Space)
-export function transformPoint(v: Vec3, m: Float32Array): Vec3 {
-    const x = v[0], y = v[1], z = v[2];
-    const w = m[3]! * x + m[7]! * y + m[11]! * z + m[15]!;
-    const rx = (m[0]! * x + m[4]! * y + m[8]! * z + m[12]!) / w;
-    const ry = (m[1]! * x + m[5]! * y + m[9]! * z + m[13]!) / w;
-    const rz = (m[2]! * x + m[6]! * y + m[10]! * z + m[14]!) / w;
-    return [rx, ry, rz];
-}
 
 export function intersectRayAABB(rayO: number[], rayD: number[], boxMin: number[], boxMax: number[]): number | null {
     let tmin = (boxMin[0] - rayO[0]) / rayD[0];
@@ -170,19 +161,38 @@ export function getPointOnRay(origin: number[], dir: number[], t: number): [numb
 }
 
 // Przecięcie promienia z nieskończoną płaszczyzną
-export function intersectRayPlane(
-    rayO: number[], 
-    rayD: number[], 
-    planeNormal: number[], 
-    planePoint: number[]
-): number | null {
-    const denom = dot(rayD, planeNormal);
+export function intersectRayPlane(rayOrigin: number[], rayDir: number[], planeNormal: number[], planeDist: number): number | null {
+    const denom = dot(planeNormal, rayDir);
+    if (Math.abs(denom) < 0.0001) return null; // Równoległy
     
-    // Jeśli denom jest bliski 0, promień jest równoległy do płaszczyzny
-    if (Math.abs(denom) < 0.00001) return null;
-
-    // t = ( (punkt_płaszczyzny - start_promienia) ⋅ normalna ) / ( kierunek_promienia ⋅ normalna )
-    const t = dot(sub(planePoint, rayO), planeNormal) / denom;
+    // Punkt na płaszczyźnie: P0 = planeNormal * planeDist (dla płaszczyzny w początku układu offset = 0)
+    // t = ( (P0 - Origin) . Normal ) / ( Dir . Normal )
+    // Dla płaszczyzny Y=0 (podłogi), P0 = [0,0,0]
+    
+    // Uproszczone: t = -(Origin . Normal + offset) / (Dir . Normal)
+    // Ale użyjmy ogólnego wektorowego:
+    const planePoint = [planeNormal[0] * planeDist, planeNormal[1] * planeDist, planeNormal[2] * planeDist];
+    const t = dot(sub(planePoint as Vec3, rayOrigin as Vec3), planeNormal) / denom;
     
     return t >= 0 ? t : null;
+}
+
+
+export function transformDirection(v: Vec3, m: Float32Array): Vec3 {
+    const x = v[0], y = v[1], z = v[2];
+    // Wektor kierunku: w = 0, więc translacja (m[12], m[13], m[14]) nie ma wpływu
+    const rx = m[0]! * x + m[4]! * y + m[8]! * z;
+    const ry = m[1]! * x + m[5]! * y + m[9]! * z;
+    const rz = m[2]! * x + m[6]! * y + m[10]! * z;
+    return normalize([rx, ry, rz]);
+}
+
+// Upewnij się, że masz transformPoint (transformacja pozycji - uwzględnia translację)
+export function transformPoint(v: Vec3, m: Float32Array): Vec3 {
+    const x = v[0], y = v[1], z = v[2];
+    const w = m[3]! * x + m[7]! * y + m[11]! * z + m[15]!;
+    const rx = (m[0]! * x + m[4]! * y + m[8]! * z + m[12]!) / w;
+    const ry = (m[1]! * x + m[5]! * y + m[9]! * z + m[13]!) / w;
+    const rz = (m[2]! * x + m[6]! * y + m[10]! * z + m[14]!) / w;
+    return [rx, ry, rz];
 }

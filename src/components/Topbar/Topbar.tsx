@@ -1,5 +1,5 @@
 import { Show, type Component, createSignal, For } from "solid-js";
-import { Box, Play, Languages, Search, X, Database } from "lucide-solid"; // Dodano nowe ikony
+import { Box, Play, Languages, Search, X, Database, Mountain } from "lucide-solid"; // Dodano nowe ikony
 import { state, storeActions } from "../../engine/store";
 import Cube from "../../engine/Cube";
 import FPSCounter from "../FpsCounter";
@@ -8,6 +8,7 @@ import StopButton from "./ModeButtons/StopButton";
 import ImportOBJButton from "./ImportOBJButton";
 import TopbarLeftSide from "./LeftSide/TopbarLeftSide";
 import LanguageModal from "./LanguageModal";
+import Terrain from "../../engine/Terrain";
 
 // Lista języków - możesz ją przenieść do osobnego pliku konfiguracyjnego
 
@@ -24,7 +25,12 @@ const Topbar: Component<{}> = () => {
         addObject(newCube);
     }
 
-    // Filtrowanie języków
+    const handleAddTerrain = () => {
+        const engine = state.engine;
+        if (!engine) return;
+        const newTerrain = new Terrain(engine.gl, "Terrain");
+        storeActions.addObject(newTerrain);
+    }
    
 
     return (
@@ -59,6 +65,9 @@ const Topbar: Component<{}> = () => {
 
                     <button onclick={handleAddCube} class="p-2 transition-colors rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white" title="Add Cube">
                         <Box size={18} />
+                    </button>
+                    <button onclick={handleAddTerrain} class="p-2 transition-colors rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white" title="Add Cube">
+                        <Mountain size={18} />
                     </button>
                 </div>
             </nav>

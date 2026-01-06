@@ -1,8 +1,10 @@
-import { createEffect, createSignal, onCleanup } from "solid-js"
+import { createEffect, createSignal, onCleanup, Show } from "solid-js"
 import Explorer from "./Explorer/Explorer";
 import SectionHeader from "../SectionHeader";
 import { Expand, Scale, SlidersHorizontal, Wrench } from "lucide-solid";
 import Properties from "./Properties/Properties";
+import { state } from "../../engine/store";
+import PaintSidebar from "./PaintSidebar";
 
 
 const Sidebar = () => {
@@ -41,6 +43,10 @@ const Sidebar = () => {
                 class={`h-full w-1 z-10 absolute left-[-4px] cursor-ew-resize hover:bg-blue-600/50 transition-all`}
             >
             </div>
+                <Show when={state.editMode === "paint"}>
+                    <PaintSidebar/>
+                </Show>
+            
             <div class="flex flex-col gap-4 h-full w-full">
                 <Explorer />
                 <Properties />

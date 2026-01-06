@@ -1,52 +1,53 @@
+import { state } from "./store"; // Jeśli potrzebujesz dostępu do gl przez store, lub przekazuj gl w konstruktorze
+
 export default class Texture {
     private gl: WebGL2RenderingContext;
-    public texture: WebGLTexture;
-    public image: HTMLImageElement;
+    public glTexture: WebGLTexture;
+    public url: string = "";
 
-    constructor(gl: WebGL2RenderingContext, urlOrData: string) {
+    constructor(gl: WebGL2RenderingContext, url: string = "") {
         this.gl = gl;
-        this.texture = gl.createTexture()!;
-        this.image = new Image();
+        this.glTexture = gl.createTexture()!;
+        
+        // Domyślny różowy piksel (placeholder)
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([255, 0, 255, 255]));
 
-        // Tymczasowy piksel (żeby nie było błędu przed załadowaniem)
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        this.gl.texImage2D(
-            this.gl.TEXTURE_2D, 0, this.gl.RGBA, 
-            1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, 
-            new Uint8Array([255, 255, 255, 255]) // Biały piksel na start
-        );
-
-        this.image.onload = () => {
-            this.bind();
-            // Wysyłamy obraz do GPU
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.image);
-            
-            // --- KLUCZOWA POPRAWKA DLA CZĄSTECZEK ---
-            // Jeśli obrazek nie jest np. 512x512, to REPEAT i MIPMAP psują teksturę (robi się czarna).
-            // Używamy CLAMP_TO_EDGE i LINEAR - to działa zawsze!
-            
-            // Oś S (poziomo) i T (pionowo) - nie powtarzaj, rozciągnij krawędź
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            
-            // Filtrowanie - zwykłe liniowe, bez mipmap (bezpieczniejsze dla dziwnych rozmiarów)
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            
-            console.log(`Texture loaded: ${this.image.width}x${this.image.height}`);
-        };
-
-        this.image.onerror = () => {
-            console.error("Failed to load texture:", urlOrData);
+        if (url) {
+            this.load(url);
         }
-
-        // Obsługa CORS (ważne jeśli ładujesz z imgur/github)
-        this.image.crossOrigin = "Anonymous";
-        this.image.src = urlOrData;
     }
 
-    public bind(slot: number = 0) {
-        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+    public load(url: string) {
+        this.url = url;
+        const image = new Image();
+        image.crossOrigin = "Anonymous"; // Ważne, żeby nie blokowało tekstur z neta
+        image.src = url;
+
+        image.onload = () => {
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+            
+            // Generujemy mipmapy (żeby z daleka nie "ziarniło")
+            this.gl.generateMipmap(this.gl.TEXTURE_2D);
+            
+            // --- TO JEST FIX NA ROZCIĄGANIE ---
+            // Mówimy GPU: "Jak UV wyjdzie poza 1.0, to powtórz obrazek"
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
+            
+            // Filtrowanie (ładniejsze wygładzanie)
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR_MIPMAP_LINEAR);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+        };
+
+        image.onerror = () => {
+            console.error("Nie udało się załadować tekstury:", url);
+        }
+    }
+
+    public bind(unit: number) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
     }
 }

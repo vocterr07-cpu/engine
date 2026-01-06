@@ -6,6 +6,7 @@ import {
 } from "lucide-solid";
 import type { ScriptNode, NodeSchemas } from "../../engine/VisualScript";
 import GlobalVariablesListNodePropertyWindow from "./GlobalVariablesListNodePropertyWindow";
+import { state } from "../../engine/store";
 
 interface Props {
     node: ScriptNode;
@@ -19,6 +20,7 @@ const NodePropertyWindow = (props: Props) => {
     // Lokalna kopia inputów, żeby edycja była płynna
     // (SolidJS Proxy jest szybki, ale przy inputach textowych lepiej mieć lokalny stan i robić sync)
     const [inputs, setInputs] = createSignal({ ...props.node.inputs });
+    const [keyName, setKeyName] = createSignal("");
 
     const handleInput = (key: string, value: string) => {
         const newInputs = { ...inputs(), [key]: value };
@@ -27,10 +29,19 @@ const NodePropertyWindow = (props: Props) => {
         props.onUpdate(props.node.id, newInputs);
     };
 
+    const handleVariableClick = (id: string) => {
+        const variable = state.variables.find(v => v.id === id);
+        if (!variable) return;
+        const newInputs = { ...inputs(), [keyName()]: `${inputs()[keyName()]} ${`gv.get.${variable.name}`}` };
+        setInputs(newInputs);
+        props.onUpdate(props.node.id, newInputs);
+    }
+
     // --- SUB-KOMPONENTY UI DLA RÓŻNYCH TYPÓW ---
 
     // 1. DLA "IF CONDITION" - Logic Wizard
     const LogicEditor = () => {
+        setKeyName("Condition")
         const presets = [
             { label: "Check Key Press", code: "Input.IsPressed('Space')", icon: Gamepad2 },
             { label: "Check Variable", code: "Variables.Get('HP') > 0", icon: Variable },
@@ -327,7 +338,9 @@ const NodePropertyWindow = (props: Props) => {
                 </div>
             </div>
 
-            <GlobalVariablesListNodePropertyWindow/>
+            <GlobalVariablesListNodePropertyWindow
+                onVariableClick={handleVariableClick}
+            />
         </>
     )
 }
