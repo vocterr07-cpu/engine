@@ -55,36 +55,7 @@ const ExplorerContextMenu = (props: Props) => {
         setOpenedWindow("visualScript");
         props.onClose();
     }
-
-    const handleAddMouseEvent = () => {
-        if (!isGameObject(props.node)) return;
-        const obj = props.node;
-        if (!state.selectedObject) return;
-        const len = state.selectedObject.components.length;
-        const newEvent = new MouseEventComponent(`MouseEvent_${len}`);
-        newEvent.gameObject = obj;
-        addComponentToObject(obj, newEvent);
-        setOpenedWindow("mouseEvent");
-        setSelectedComponent(newEvent);
-        props.onExpand();
-        setSelectedMouseEvent(newEvent);
-        props.onClose();
-    }
-
-    const handleAddTouchEvent = () => {
-        if (!isGameObject(props.node)) return;
-        const obj = props.node;
-        if (!state.selectedObject) return;
-        const len = state.selectedObject.components.length;
-        const newEvent = new TouchEventComponent(`TouchEvent_${len}`);
-        newEvent.gameObject = obj;
-        addComponentToObject(obj, newEvent);
-        setOpenedWindow("touchEvent");
-        setSelectedComponent(newEvent);
-        props.onExpand();
-        setSelectedTouchEvent(newEvent);
-        props.onClose();
-    }
+    
 
     // --- NOWE: Dodawanie Particle System ---
     const handleAddParticleSystem = () => {
@@ -110,6 +81,7 @@ const ExplorerContextMenu = (props: Props) => {
     const handleDelete = () => {
         console.log("Delete", props.node.name);
         props.onClose();
+        storeActions.deleteEntity(props.node);
     }
 
     return (
@@ -123,9 +95,6 @@ const ExplorerContextMenu = (props: Props) => {
                     <ExplorerContextMenuItem label="Add Script" handleClick={handleAddScript} />
                     <ExplorerContextMenuItem label="Add Visual Script" handleClick={handleAddVisualScript} />
                     <ExplorerContextMenuItem label="Add Particle System" handleClick={handleAddParticleSystem} />
-                    <div class="h-px bg-zinc-700 my-1"></div>
-                    <ExplorerContextMenuItem label="Add Mouse Event" handleClick={handleAddMouseEvent} />
-                    <ExplorerContextMenuItem label="Add Touch Event" handleClick={handleAddTouchEvent}/>
                 </Show>
                 
                 <div class="h-px bg-zinc-700 my-1"></div>

@@ -45,7 +45,7 @@ const BottomPanel = () => {
 
     return (
         <div 
-            class="flex flex-col relative shrink-0 w-full bg-[#1e1e1e] border-t border-[#333333] shadow-2xl z-40"
+            class="flex flex-col relative shrink-0 w-full bg-[#1e1e1e] border-t border-[#333333] shadow-2xl z-10"
             style={{ height: `${height()}px` }}
         >
             {/* Uchwyt do zmiany rozmiaru */}

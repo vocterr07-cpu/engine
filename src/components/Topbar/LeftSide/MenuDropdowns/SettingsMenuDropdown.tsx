@@ -1,8 +1,9 @@
-import { Languages, Monitor, Keyboard } from 'lucide-solid'
+import { Languages, Monitor, Keyboard, Settings2 } from 'lucide-solid'
 import { MenuContainer, MenuHeader, MenuItem, MenuSeparator } from '../MenuUI'
 
 interface Props {
-    openLangModal: () => void; // Przekazujemy funkcję do otwierania modala
+    setModalOpened: (modalName: string) => void;
+    setActiveMenu: (menuName: string | null) => void;
 }
 
 const SettingsMenuDropdown = (props: Props) => {
@@ -10,10 +11,16 @@ const SettingsMenuDropdown = (props: Props) => {
         <MenuContainer>
             <MenuHeader title="General" />
 
+            <MenuItem
+                label='Game Properties'
+                icon={Settings2}
+                onClick={() => props.setModalOpened("GameProperties")}
+            />
+
             <MenuItem 
                 label="Language" 
                 icon={Languages} 
-                onClick={props.openLangModal}
+                onClick={() => props.setModalOpened("Language")}
             />
 
             <MenuItem 

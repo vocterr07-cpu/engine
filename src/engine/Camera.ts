@@ -102,7 +102,7 @@ private performTerrainTool(screenX: number, screenY: number) {
         else if (state.editMode === "paint") {
             // --- ZMIANA 2: Pobieramy wybraną warstwę ---
             // Domyślnie malujemy warstwą 1 (tą którą ustawiliśmy w AssetBrowser)
-            const layer =  1; 
+            const layer =  state.terrainSettings.selectedLayer
             
             terrain.paint(hitX, hitZ, radius, strength, layer);
         }

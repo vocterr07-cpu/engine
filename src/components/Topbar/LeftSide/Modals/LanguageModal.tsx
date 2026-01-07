@@ -1,14 +1,14 @@
 import { createSignal, For } from "solid-js"
-import { state } from "../../engine/store";
+import { state } from "../../../../engine/store";
 import { Search, X } from "lucide-solid";
 
 
 const LanguageModal = ({
-    langOpen,
-    setLangOpen
+    isOpened,
+    setModalOpened
 } : {
-    langOpen: boolean,
-    setLangOpen: (open: boolean) => void
+    isOpened: boolean,
+    setModalOpened: (modalName: string) => void
 }) => {
     const [searchQuery, setSearchQuery] = createSignal("");
 
@@ -34,14 +34,14 @@ const LanguageModal = ({
 
     const changeLanguage = (code: string) => {
         state.language = code;
-        setLangOpen(false);
+        setModalOpened("");
     }
     return (
 
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
 
             {/* Kliknięcie w tło zamyka modal */}
-            <div class="absolute inset-0" onClick={() => setLangOpen(false)}></div>
+            <div class="absolute inset-0" onClick={() => setModalOpened("")}></div>
 
             {/* Okno Modala */}
             <div class="relative bg-zinc-900 border border-zinc-700 w-[600px] max-h-[80vh] rounded-xl shadow-2xl shadow-black flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
@@ -52,7 +52,7 @@ const LanguageModal = ({
                         <h2 class="text-lg font-black text-white tracking-wide">SELECT LANGUAGE</h2>
                         <p class="text-xs text-zinc-500">Choose your preferred interface language</p>
                     </div>
-                    <button onClick={() => setLangOpen(false)} class="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={() => setModalOpened("")} class="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>

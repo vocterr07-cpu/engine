@@ -1,6 +1,6 @@
 import { createMutable } from "solid-js/store";
 import type Engine from "./Engine";
-import type GameObject from "./GameObject";
+import GameObject from "./GameObject";
 import type Script from "./Script";
 import type MouseEventComponent from "./MouseEventComponent";
 import type Component from "./Component";
@@ -8,7 +8,7 @@ import type TouchEventComponent from "./TouchEventComponent";
 import type ParticleSystem from "./ParticleSystem";
 import type VisualScript from "./VisualScript";
 
-// Zaktualizowany interfejs (dodane 'log')
+// --- Logi i Zmienne ---
 export interface LogEntry {
     id: string;
     type: 'log' | 'info' | 'warn' | 'error' | 'success';
@@ -23,11 +23,29 @@ export interface GameVariable {
     value: any;
 }
 
-// Ustawienia narzędzi terenu
+// --- Ustawienia Edytora (Teren) ---
 export interface TerrainSettings {
     brushRadius: number;
     brushStrength: number;
-    selectedLayer: number; // 0-7 (dla Texture Array)
+    selectedLayer: number;
+}
+
+// --- Ustawienia Projektu (To co edytujemy w modalu) ---
+export interface ProjectSettings {
+    // General
+    projectName: string;
+    version: string;
+    author: string;
+    description: string;
+    
+    // Physics
+    gravity: number;
+    fixedTimeStep: number; // np. 0.016 (60 FPS)
+    
+    // Graphics
+    pixelRatio: number; // 0.5 - 2.0 (Skalowanie rozdzielczości)
+    shadowsEnabled: boolean;
+    antialiasing: boolean;
 }
 
 interface EditorState {
@@ -50,8 +68,9 @@ interface EditorState {
     editMode: "move" | "rotate" | "sculpt" | "paint";
     gameStarted: boolean;
     variables: GameVariable[];
-    // Dodane ustawienia terenu
+    
     terrainSettings: TerrainSettings;
+    projectSettings: ProjectSettings;
 }
 
 export const state = createMutable<EditorState>({
@@ -73,99 +92,119 @@ export const state = createMutable<EditorState>({
     mode: "camera",
     editMode: "move",
     gameStarted: false,
-    variables: [{id: "1", name: "TestInteger", type: "Integer", value: 1}, {id: "2", name: "TestString", type: "String", value: "testString"}],
-    // Domyślne ustawienia pędzla
+    variables: [
+        { id: "1", name: "TestInteger", type: "Integer", value: 1 }, 
+        { id: "2", name: "TestString", type: "String", value: "testString" }
+    ],
+    
     terrainSettings: {
         brushRadius: 3.0,
         brushStrength: 2.0,
         selectedLayer: 0
+    },
+
+    // Domyślne wartości nowego projektu
+    projectSettings: {
+        projectName: "New Game Project",
+        version: "0.1.0",
+        author: "Unknown Developer",
+        description: "A solid game project.",
+        gravity: 0.0007,
+        fixedTimeStep: 0.016,
+        pixelRatio: 1.0,
+        shadowsEnabled: true,
+        antialiasing: true
     }
 });
 
 export const storeActions = {
     setEngine: (engine: Engine) => { state.engine = engine; },
-
-    setObjects: (newObjects: GameObject[]) => {
-        state.objects = newObjects;
-        state.version++;
-    },
-
+    setObjects: (newObjects: GameObject[]) => { state.objects = newObjects; state.version++; },
     addObject: (newObject: GameObject) => {
         if (!state.engine) return;
-        state.engine?.scene.add(newObject);
+        state.engine.scene.add(newObject);
         state.objects.push(newObject);
+        state.selectedObject = newObject;
         state.version++;
     },
-
     removeObject: (object: GameObject) => {
         state.engine?.scene.remove(object);
         const idx = state.objects.indexOf(object);
         if (idx > -1) state.objects.splice(idx, 1);
-
         if (state.selectedObject === object) state.selectedObject = null;
         state.version++;
     },
-
     setSelectedObject: (obj: GameObject | null) => { state.selectedObject = obj; },
     setSelectedScript: (script: Script | null) => { state.selectedScript = script; },
-    setSelectedVisualScript: (script: VisualScript | null) => {state.selectedVisualScript = script},
+    setSelectedVisualScript: (script: VisualScript | null) => { state.selectedVisualScript = script },
     setSelectedComponent: (component: Component | null) => { state.selectedComponent = component },
     setSelectedMouseEvent: (evt: MouseEventComponent | null) => { state.selectedMouseEvent = evt; },
     setSelectedTouchEvent: (event: TouchEventComponent | null) => { state.selectedTouchEvent = event },
-    setSelectedParticleSystem: (particleSystem: ParticleSystem | null) => {state.selectedParticleSystem = particleSystem},
+    setSelectedParticleSystem: (particleSystem: ParticleSystem | null) => { state.selectedParticleSystem = particleSystem },
     setOpenedContextMenuId: (id: string | null) => { state.openedContextMenuId = id; },
     setOpenedWindow: (windowName: string) => { state.openedWindow = windowName; },
-
     addComponentToObject: (targetObj: GameObject, component: Component) => {
         targetObj.components.push(component);
         state.version++;
     },
-
     addLogsBatch: (batch: LogEntry[]) => {
         let updated = [...state.logs, ...batch];
-        if (updated.length > 500) {
-            updated = updated.slice(updated.length - 500);
-        }
+        if (updated.length > 500) updated = updated.slice(updated.length - 500);
         state.logs = updated;
     },
-
     clearLogs: () => { state.logs = []; },
-
     setMode: (mode: "player" | "camera") => { state.mode = mode },
+    setEditMode: (mode: "move" | "rotate" | "sculpt" | "paint") => { state.editMode = mode; },
     
-    // Ważne: Akcja do zmiany trybu edycji (Move/Rotate/Sculpt/Paint)
-    setEditMode: (mode: "move" | "rotate" | "sculpt" | "paint") => { 
-        state.editMode = mode; 
-    },
+    // Terrain Actions
+    setTerrainLayer: (layerIndex: number) => { state.terrainSettings.selectedLayer = layerIndex; },
+    setBrushRadius: (radius: number) => { state.terrainSettings.brushRadius = radius; },
+    setBrushStrength: (strength: number) => { state.terrainSettings.brushStrength = strength; },
 
-    // Ważne: Akcje do Terenu
-    setTerrainLayer: (layerIndex: number) => {
-        state.terrainSettings.selectedLayer = layerIndex;
-    },
-    setBrushRadius: (radius: number) => {
-        state.terrainSettings.brushRadius = radius;
-    },
-    setBrushStrength: (strength: number) => {
-        state.terrainSettings.brushStrength = strength;
-    },
-
+    // Variables Actions
     removeVariable: (variableId: string) => {
         const index = state.variables.findIndex(v => v.id === variableId);
-        if (index !== -1) {
-            state.variables.splice(index, 1);
+        if (index !== -1) state.variables.splice(index, 1);
+    },
+    updateVariable: (id: string, data: Partial<GameVariable>) => {
+        const v = state.variables.find(v => v.id === id);
+        if (v) Object.assign(v, data);
+    },
+    getVariable: (name: string) => {
+        return state.variables.find(v => v.name === name);
+    },
+
+    // Entity Actions
+    deleteEntity: (entity: GameObject | Component) => {
+        if (entity instanceof GameObject) {
+            storeActions.removeObject(entity);
+            return;
+        }
+        // Szukanie rodzica komponentu
+        if (state.selectedObject) {
+            const index = state.selectedObject.components.indexOf(entity);
+            if (index !== -1) {
+                state.selectedObject.components.splice(index, 1);
+                state.version++;
+                if (state.selectedComponent === entity) state.selectedComponent = null;
+                return;
+            }
+        }
+        for (const obj of state.objects) {
+            const index = obj.components.indexOf(entity);
+            if (index !== -1) {
+                obj.components.splice(index, 1);
+                state.version++;
+                if (state.selectedComponent === entity) state.selectedComponent = null;
+                break;
+            }
         }
     },
 
-    updateVariable: (id: string, data: Partial<GameVariable>) => {
-        const v = state.variables.find(v => v.id === id);
-        if (v) {
-            if (data.name !== undefined) v.name = data.name;
-            if (data.type !== undefined) v.type = data.type;
-            if (data.value !== undefined) v.value = data.value;
-        }
-    },
-    
-    getVariable: (name: string) => {
-        return state.variables.find(v => v.name === name);
+    // --- PROJECT SETTINGS ACTION ---
+    updateProjectSettings: (data: Partial<ProjectSettings>) => {
+        Object.assign(state.projectSettings, data);
+        // Opcjonalnie: Tutaj dodaj zapis do localStorage
+        // localStorage.setItem("projectSettings", JSON.stringify(state.projectSettings));
     }
 };

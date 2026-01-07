@@ -1,11 +1,12 @@
 import { createSignal, Show, onCleanup, onMount } from "solid-js"
-import LanguageModal from "../LanguageModal"
+import LanguageModal from "./Modals/LanguageModal"
 import FileMenuDropdown from "./MenuDropdowns/FileMenuDropdown"
 import SettingsMenuDropdown from "./MenuDropdowns/SettingsMenuDropdown" // Import
 import { ChevronDown } from "lucide-solid"
+import GamePropertiesModal from "./Modals/GamePropertiesModal"
 
 const TopbarLeftSide = () => {
-    const [isLangOpen, setLangOpen] = createSignal(false);
+    const [modalOpened, setModalOpened] = createSignal("GameProperties");
     const [activeMenu, setActiveMenu] = createSignal<string | null>(null);
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -26,18 +27,22 @@ const TopbarLeftSide = () => {
     const getBtnClass = (isActive: boolean) => `
         px-3 py-1.5 rounded-md transition-all ease-in-out duration-300 
         text-xs font-black uppercase tracking-widest flex items-center gap-1
-        ${isActive 
-            ? "bg-blue-600/20 text-blue-400" 
+        ${isActive
+            ? "bg-blue-600/20 text-blue-400"
             : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
         }
     `;
+
+    const isModalOpened = (modalName: string) => {
+        return modalOpened() === modalName
+    }
 
     return (
         <>
             <div class="flex items-center gap-1">
                 {/* --- FILE MENU --- */}
                 <div class="relative">
-                    <button 
+                    <button
                         data-menu-trigger
                         onClick={() => toggleMenu("File")}
                         class={getBtnClass(activeMenu() === "File")}
@@ -45,13 +50,13 @@ const TopbarLeftSide = () => {
                         File
                     </button>
                     <Show when={activeMenu() === "File"}>
-                        <FileMenuDropdown/>
+                        <FileMenuDropdown />
                     </Show>
                 </div>
 
                 {/* --- SETTINGS MENU --- */}
                 <div class="relative">
-                    <button 
+                    <button
                         data-menu-trigger
                         onClick={() => toggleMenu("Settings")}
                         class={getBtnClass(activeMenu() === "Settings")}
@@ -60,16 +65,25 @@ const TopbarLeftSide = () => {
                     </button>
                     <Show when={activeMenu() === "Settings"}>
                         {/* Przekazujemy funkcję otwierania modala języka do środka */}
-                        <SettingsMenuDropdown openLangModal={() => {
-                            setLangOpen(true);
-                            setActiveMenu(null); // Zamykamy menu po kliknięciu
-                        }}/>
+                        <SettingsMenuDropdown 
+                            setModalOpened={setModalOpened}
+                            setActiveMenu={setActiveMenu}
+                        />
                     </Show>
                 </div>
             </div>
 
-            <Show when={isLangOpen()}>
-                <LanguageModal langOpen={isLangOpen()} setLangOpen={setLangOpen} />
+            <Show when={isModalOpened("GameProperties")}>
+                <GamePropertiesModal
+                    isOpened={isModalOpened("GameProperties")}
+                    setModalOpened={setModalOpened}
+
+                />
+
+            </Show>
+
+            <Show when={isModalOpened("Language")}>
+                <LanguageModal isOpened={isModalOpened("Language")} setModalOpened={setModalOpened} />
             </Show>
         </>
     )
