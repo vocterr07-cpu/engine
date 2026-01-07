@@ -121,7 +121,7 @@ export default class ParticleSystem extends Component {
         gl.depthMask(false);
 
         // Podpinamy teksturę jeśli istnieje
-        if (this.texture && this.texture.image && this.texture.image.complete) {
+        if (this.texture) {
             this.texture.bind(0);
             gl.uniform1i(locs.useTexture, 1);
             gl.uniform1i(locs.texture, 0);
