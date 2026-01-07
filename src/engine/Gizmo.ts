@@ -99,8 +99,8 @@ export default class Gizmo {
             this.tooltip.style.display = "none";
             return;
         }
-        const moveScale: [number, number, number] = this.engine.editMode === "move" ? [1, 1, 1] : [0, 0, 0];
-        const rotateScale: [number, number, number] = this.engine.editMode === "rotate" ? [1, 1, 1] : [0, 0, 0];
+        const moveScale: [number, number, number] = state.editMode === "move" ? [1, 1, 1] : [0, 0, 0];
+        const rotateScale: [number, number, number] = state.editMode === "rotate" ? [1, 1, 1] : [0, 0, 0];
         this.xAxis.scale = moveScale;
         this.yAxis.scale = moveScale;
         this.zAxis.scale = moveScale;
@@ -139,10 +139,10 @@ export default class Gizmo {
         // 1. Sprawdzamy Pierścienie (Priorytet Rotacji)
         // Matematyczne sprawdzenie dystansu od środka na odpowiednich płaszczyznach
         
-        if (this.engine.editMode === "rotate") {
+        if (state.editMode === "rotate") {
             const checkRingHit = (axis: 'x' | 'y' | 'z') => {
             let normal = (axis === 'x') ? [1, 0, 0] : ((axis === 'y') ? [0, 1, 0] : [0, 0, 1]);
-            const t = intersectRayPlane(scaledRayO, ray.rayDir, normal, [0, 0, 0]);
+            const t = intersectRayPlane(scaledRayO, ray.rayDir, normal, 0);
             if (t !== null) {
                 const hit = getPointOnRay(scaledRayO, ray.rayDir, t);
                 const dist = Math.sqrt(hit[0] ** 2 + hit[1] ** 2 + hit[2] ** 2);
@@ -272,21 +272,25 @@ export default class Gizmo {
     }
 
     private getAngleOnPlane(ray: any, axis: 'x' | 'y' | 'z', center: [number, number, number]) {
-        let normal = [0, 1, 0];
-        if (axis === 'x') normal = [1, 0, 0];
-        if (axis === 'z') normal = [0, 0, 1];
+    let normal: [number, number, number] = [0, 1, 0];
+    if (axis === 'x') normal = [1, 0, 0];
+    if (axis === 'z') normal = [0, 0, 1];
 
-        const t = intersectRayPlane(ray.rayOrigin, ray.rayDir, normal, center);
-        if (t === null) return null;
+    // Obliczamy dystans płaszczyzny od środka świata (D w równaniu Ax + By + Cz + D = 0)
+    // Dystans płaszczyzny to iloczyn skalarny dowolnego punktu na niej (center) i normalnej.
+    const planeDist = center[0] * normal[0] + center[1] * normal[1] + center[2] * normal[2];
 
-        const hit: [number, number, number] = getPointOnRay(ray.rayOrigin, ray.rayDir, t);
-        const local = sub(hit, center);
+    const t = intersectRayPlane(ray.rayOrigin, ray.rayDir, normal, planeDist);
+    if (t === null) return null;
 
-        if (axis === 'y') return Math.atan2(local[2], local[0]);
-        if (axis === 'x') return Math.atan2(local[2], local[1]);
-        if (axis === 'z') return Math.atan2(local[1], local[0]);
-        return 0;
-    }
+    const hit: [number, number, number] = getPointOnRay(ray.rayOrigin, ray.rayDir, t);
+    const local = sub(hit, center);
+
+    if (axis === 'y') return Math.atan2(local[2], local[0]);
+    if (axis === 'x') return Math.atan2(local[2], local[1]);
+    if (axis === 'z') return Math.atan2(local[1], local[0]);
+    return 0;
+}
 
     private updateTooltip(angle: number, pos3d: number[] | null, screenX: number = 0, screenY: number = 0) {
         this.tooltip.innerText = `${angle.toFixed(0)}°`;
