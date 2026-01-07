@@ -1,6 +1,6 @@
 import { SlidersHorizontal, Move, Maximize, Rotate3d, Box } from "lucide-solid"
 import SectionHeader from "../../SectionHeader"
-import { state } from "../../../engine/store"
+import { state, type GameVariable } from "../../../engine/store"
 import { Show, For, onMount, onCleanup, createSignal } from "solid-js";
 import PropertyRow from "./PropertyRow";
 
@@ -44,11 +44,11 @@ const Properties = () => {
         state.version++;
     }
 
-    const addLocalVar = (name: string, type: "number" | "boolean" | "string") => {
+    const addLocalVar = (name: string, type: "Integer" | "String" | "Float" | "Boolean" | "Object Ref") => {
         if (!state.selectedObject) return;
         let defaultValue: any = 0;
-        if (type === "boolean") defaultValue = false;
-        if (type === "string") defaultValue = "";
+        if (type === "Boolean") defaultValue = false;
+        if (type === "String") defaultValue = "";
 
         state.selectedObject.variables.push({
             id: crypto.randomUUID(),
